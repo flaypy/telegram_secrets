@@ -1,152 +1,233 @@
+import axios, { AxiosInstance } from 'axios';
+
+interface PushinPayConfig {
+  token: string;
+  environment: 'production' | 'sandbox';
+}
+
+interface CreatePixPaymentRequest {
+  value: number; // Amount in cents (minimum 50)
+  webhook_url?: string;
+  expires_in?: number; // Expiration time in seconds
+  split_rules?: Array<{
+    account_id: string;
+    percentage: number;
+  }>;
+}
+
+interface CreatePixPaymentResponse {
+  id: string;
+  qr_code: string; // Full PIX payment code (copy-paste)
+  qr_code_base64: string; // Base64 encoded QR code image
+  status: 'created' | 'paid' | 'expired';
+  value: number;
+  created_at: string;
+  expires_at: string;
+}
+
+interface TransactionStatusResponse {
+  id: string;
+  status: 'created' | 'paid' | 'expired';
+  value: number;
+  end_to_end_id?: string; // Central Bank transaction ID (available after payment)
+  created_at: string;
+  updated_at: string;
+  paid_at?: string;
+}
+
+interface WebhookPayload {
+  id: string;
+  status: 'paid' | 'expired';
+  value: number;
+  end_to_end_id?: string;
+  paid_at?: string;
+}
+
 /**
- * PushinPay Payment Gateway Integration
+ * PushinPay API Service
+ * Official documentation: https://app.theneo.io/pushinpay/pix
  *
- * This is a placeholder service for integrating with PushinPay.
- * Replace the placeholder functions with actual PushinPay SDK calls.
- *
- * Documentation: https://pushinpay.com/docs (check their official docs)
- *
- * Environment Variables Required:
- * - PUSHINPAY_API_KEY: Your PushinPay API key
- * - PUSHINPAY_MERCHANT_ID: Your merchant ID
- * - PUSHINPAY_WEBHOOK_SECRET: Secret for webhook validation
+ * Environment URLs:
+ * - Production: https://api.pushinpay.com.br
+ * - Sandbox: https://api-sandbox.pushinpay.com.br
  */
+export class PushinPayService {
+  private client: AxiosInstance;
+  private token: string;
+  private baseURL: string;
 
-interface PaymentInitiationRequest {
-  priceId: string;
-  amount: number;
-  currency: string;
-  userId: string;
-  productName: string;
-}
+  constructor(config: PushinPayConfig) {
+    this.token = config.token;
+    this.baseURL =
+      config.environment === 'production'
+        ? 'https://api.pushinpay.com.br'
+        : 'https://api-sandbox.pushinpay.com.br';
 
-interface PaymentInitiationResponse {
-  success: boolean;
-  paymentId?: string;
-  paymentUrl?: string;
-  error?: string;
-}
+    console.log('PushinPay Service initialized:', {
+      baseURL: this.baseURL,
+      environment: config.environment,
+      hasToken: !!this.token,
+      tokenPrefix: this.token.substring(0, 10) + '...',
+    });
 
-interface PaymentStatusResponse {
-  success: boolean;
-  status?: 'pending' | 'completed' | 'failed';
-  transactionId?: string;
-  error?: string;
-}
+    this.client = axios.create({
+      baseURL: this.baseURL,
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      timeout: 30000, // 30 seconds
+    });
+  }
 
-/**
- * Initialize a payment with PushinPay
- *
- * TODO: Replace this placeholder with actual PushinPay SDK implementation
- * Example (pseudo-code):
- *
- * import PushinPaySDK from 'pushinpay-sdk';
- *
- * const pushinpay = new PushinPaySDK({
- *   apiKey: process.env.PUSHINPAY_API_KEY,
- *   merchantId: process.env.PUSHINPAY_MERCHANT_ID,
- * });
- *
- * const payment = await pushinpay.payments.create({
- *   amount: data.amount,
- *   currency: data.currency,
- *   description: data.productName,
- *   customerReference: data.userId,
- *   returnUrl: `${process.env.FRONTEND_URL}/payment/success`,
- *   cancelUrl: `${process.env.FRONTEND_URL}/payment/cancel`,
- * });
- */
-export async function initiatePushinPayPayment(
-  data: PaymentInitiationRequest
-): Promise<PaymentInitiationResponse> {
-  try {
-    // TODO: Replace with actual PushinPay API call
-    console.log('Initiating PushinPay payment with data:', data);
+  /**
+   * Create a new PIX payment
+   * Generates QR code and copy-paste PIX code
+   *
+   * @param amountInCents - Amount in cents (minimum 50 cents = R$ 0.50)
+   * @param webhookUrl - Optional webhook URL for payment notifications
+   * @param expiresInMinutes - Expiration time in minutes (default: 30)
+   * @returns Payment data with QR code
+   */
+  async createPixPayment(
+    amountInCents: number,
+    webhookUrl?: string,
+    expiresInMinutes: number = 30
+  ): Promise<CreatePixPaymentResponse> {
+    if (amountInCents < 50) {
+      throw new Error('Minimum transaction amount is 50 cents (R$ 0.50)');
+    }
 
-    // Placeholder response
-    // In production, this should return actual payment data from PushinPay
+    try {
+      const payload: CreatePixPaymentRequest = {
+        value: amountInCents,
+        expires_in: expiresInMinutes * 60, // Convert minutes to seconds
+      };
+
+      if (webhookUrl) {
+        payload.webhook_url = webhookUrl;
+      }
+
+      console.log('Creating PIX payment:', {
+        url: `${this.baseURL}/api/pix/cashIn`,
+        payload,
+        headers: {
+          Authorization: `Bearer ${this.token.substring(0, 10)}...`,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const response = await this.client.post<CreatePixPaymentResponse>(
+        '/api/pix/cashIn',
+        payload
+      );
+
+      console.log('PIX payment created successfully:', {
+        transactionId: response.data.id,
+        status: response.data.status,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('PushinPay API Error:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers,
+        message: error.message,
+      });
+      throw new Error(
+        `Failed to create PIX payment: ${error.response?.data?.message || error.response?.data?.error || error.message}`
+      );
+    }
+  }
+
+  /**
+   * Check transaction status
+   * NOTE: Limited to once per minute to avoid account blocking
+   *
+   * @param transactionId - Transaction ID returned from createPixPayment
+   * @returns Transaction status
+   */
+  async getTransactionStatus(
+    transactionId: string
+  ): Promise<TransactionStatusResponse> {
+    try {
+      const response = await this.client.get<TransactionStatusResponse>(
+        `/api/transactions/${transactionId}`
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('PushinPay API Error:', error.response?.data || error.message);
+      throw new Error(
+        `Failed to get transaction status: ${error.response?.data?.message || error.message}`
+      );
+    }
+  }
+
+  /**
+   * Verify webhook signature (if implemented by PushinPay)
+   * This is a placeholder - implement according to PushinPay's webhook security docs
+   */
+  verifyWebhookSignature(payload: string, signature: string): boolean {
+    // TODO: Implement signature verification if PushinPay provides it
+    // For now, we'll verify the webhook URL in the route middleware
+    return true;
+  }
+
+  /**
+   * Parse webhook payload
+   */
+  parseWebhookPayload(payload: any): WebhookPayload {
     return {
-      success: true,
-      paymentId: 'PLACEHOLDER_PAYMENT_ID_' + Date.now(),
-      paymentUrl: 'https://pushinpay.com/checkout/placeholder',
+      id: payload.id,
+      status: payload.status,
+      value: payload.value,
+      end_to_end_id: payload.end_to_end_id,
+      paid_at: payload.paid_at,
     };
-  } catch (error) {
-    console.error('PushinPay payment initiation error:', error);
-    return {
-      success: false,
-      error: 'Failed to initiate payment',
-    };
+  }
+
+  /**
+   * Format amount from cents to BRL currency string
+   */
+  static formatCurrency(amountInCents: number): string {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(amountInCents / 100);
+  }
+
+  /**
+   * Convert price amount to cents
+   */
+  static toCents(amount: number): number {
+    return Math.round(amount * 100);
   }
 }
 
-/**
- * Check payment status with PushinPay
- *
- * TODO: Replace with actual PushinPay SDK call to check payment status
- */
-export async function checkPaymentStatus(
-  paymentId: string
-): Promise<PaymentStatusResponse> {
-  try {
-    // TODO: Replace with actual PushinPay API call
-    console.log('Checking payment status for:', paymentId);
+// Export singleton instance
+let pushinPayService: PushinPayService | null = null;
 
-    // Placeholder response
-    return {
-      success: true,
-      status: 'pending',
-      transactionId: paymentId,
-    };
-  } catch (error) {
-    console.error('PushinPay payment status check error:', error);
-    return {
-      success: false,
-      error: 'Failed to check payment status',
-    };
+export function getPushinPayService(): PushinPayService {
+  if (!pushinPayService) {
+    const token = process.env.PUSHINPAY_TOKEN;
+    const environment = (process.env.NODE_ENV === 'production'
+      ? 'production'
+      : 'sandbox') as 'production' | 'sandbox';
+
+    if (!token) {
+      throw new Error('PUSHINPAY_TOKEN environment variable is not set');
+    }
+
+    pushinPayService = new PushinPayService({
+      token,
+      environment,
+    });
   }
-}
 
-/**
- * Verify webhook signature from PushinPay
- *
- * TODO: Implement webhook signature verification according to PushinPay docs
- */
-export function verifyWebhookSignature(
-  payload: string,
-  signature: string
-): boolean {
-  // TODO: Implement actual signature verification
-  // Example (pseudo-code):
-  //
-  // import crypto from 'crypto';
-  // const secret = process.env.PUSHINPAY_WEBHOOK_SECRET;
-  // const expectedSignature = crypto
-  //   .createHmac('sha256', secret)
-  //   .update(payload)
-  //   .digest('hex');
-  // return signature === expectedSignature;
-
-  console.log('Verifying webhook signature (placeholder)');
-  return true; // Placeholder - always returns true
-}
-
-/**
- * Generate a secure download link for completed orders
- *
- * In a real application, this should:
- * 1. Generate a signed URL with expiration
- * 2. Store it in a secure location (S3, CDN, etc.)
- * 3. Return the temporary download link
- */
-export function generateDownloadLink(orderId: string, productId: string): string {
-  // TODO: Implement actual secure download link generation
-  // This might involve:
-  // - Generating pre-signed URLs for S3/CloudFront
-  // - Creating time-limited tokens
-  // - Tracking download counts/limits
-
-  const timestamp = Date.now();
-  const token = Buffer.from(`${orderId}:${productId}:${timestamp}`).toString('base64');
-
-  return `https://cdn.telegramSecrets.com/downloads/${token}`;
+  return pushinPayService;
 }

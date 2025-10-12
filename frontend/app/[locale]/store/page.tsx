@@ -10,14 +10,12 @@ export default function StorePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const data = await productAPI.getAll();
         setProducts(data.products);
-        setDetectedCountry(data.detectedCountry);
       } catch (err) {
         setError('Failed to load products');
         console.error(err);
@@ -56,11 +54,6 @@ export default function StorePage() {
             {t('title')}
           </h1>
           <p className="text-xl text-gray-400 mb-4">{t('subtitle')}</p>
-          {detectedCountry && (
-            <p className="text-sm text-gray-500">
-              {t('detectedCountry')}: {detectedCountry}
-            </p>
-          )}
         </div>
 
         {/* Products Grid */}

@@ -40,12 +40,6 @@ export default function Header() {
             >
               {t('store')}
             </Link>
-            <Link
-              href="/admin/products"
-              className="text-gray-300 hover:text-accent-gold transition-colors"
-            >
-              {t('admin')}
-            </Link>
           </nav>
 
           {/* Mobile menu button */}

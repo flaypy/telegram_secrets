@@ -59,6 +59,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               {t('orders')}
             </Link>
+            <Link
+              href="/admin/settings"
+              className="px-4 py-2 text-gray-300 hover:text-accent-gold transition-colors"
+            >
+              {t('settings')}
+            </Link>
           </nav>
         </div>
 

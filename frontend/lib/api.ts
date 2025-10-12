@@ -54,6 +54,7 @@ export interface Order {
   status: 'PENDING' | 'COMPLETED' | 'FAILED';
   userId: string;
   priceId: string;
+  pushinpayTxId?: string;
   downloadLink?: string;
   createdAt: string;
   price?: Price & { product?: Product };
@@ -62,6 +63,20 @@ export interface Order {
     email: string;
     role: string;
   };
+}
+
+export interface PixPaymentResponse {
+  success: boolean;
+  orderId: string;
+  pushinpayTransactionId: string;
+  pixCode: string; // Copy-paste PIX code
+  pixQrCodeBase64: string; // Base64 QR code image
+  amount: string; // Formatted currency (e.g., "R$ 10,00")
+  amountInCents: number;
+  status: 'created' | 'paid' | 'expired';
+  expiresAt: string;
+  productName: string;
+  priceCategory: string;
 }
 
 // API functions
@@ -192,13 +207,30 @@ export const adminAPI = {
 };
 
 export const paymentAPI = {
-  initiatePayment: async (priceId: string) => {
-    const response = await api.post('/api/payments/initiate-payment', { priceId });
+  initiatePayment: async (priceId: string): Promise<PixPaymentResponse> => {
+    const response = await api.post<PixPaymentResponse>('/api/payments/initiate-payment', { priceId });
     return response.data;
   },
 
   getOrder: async (orderId: string) => {
     const response = await api.get<{ order: Order }>(`/api/payments/order/${orderId}`);
+    return response.data;
+  },
+
+  checkPaymentStatus: async (transactionId: string) => {
+    const response = await api.get(`/api/payments/check-status/${transactionId}`);
+    return response.data;
+  },
+};
+
+export const settingsAPI = {
+  getPublicSettings: async () => {
+    const response = await api.get<{ supportTelegram: string }>('/api/settings/public');
+    return response.data;
+  },
+
+  updateSetting: async (key: string, value: string) => {
+    const response = await api.put(`/api/settings/${key}`, { value });
     return response.data;
   },
 };

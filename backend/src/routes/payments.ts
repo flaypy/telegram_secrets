@@ -1,20 +1,17 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
-import {
-  initiatePushinPayPayment,
-  checkPaymentStatus,
-  verifyWebhookSignature,
-  generateDownloadLink,
-} from '../services/pushinpay';
+import { getPushinPayService, PushinPayService } from '../services/pushinpay';
 
 const router = Router();
 const prisma = new PrismaClient();
 
 /**
  * POST /api/payments/initiate-payment
- * Initiate a payment with PushinPay
+ * Initiate a PIX payment with PushinPay
  * Protected route - requires authentication
+ *
+ * Returns: PIX QR code and copy-paste code for payment
  */
 router.post(
   '/initiate-payment',
@@ -57,40 +54,56 @@ router.post(
         },
       });
 
-      // Initiate payment with PushinPay
-      // TODO: Replace with actual PushinPay integration
-      const paymentResponse = await initiatePushinPayPayment({
-        priceId: price.id,
-        amount: price.amount,
-        currency: price.currency,
-        userId,
-        productName: price.product.name,
+      // Convert price amount to cents
+      const amountInCents = PushinPayService.toCents(price.amount);
+
+      // Create webhook URL with order ID
+      const webhookUrl = `${process.env.BACKEND_URL || 'http://localhost:3001'}/api/payments/webhook`;
+
+      // Initialize PushinPay service
+      const pushinpay = getPushinPayService();
+
+      // Create PIX payment with PushinPay (expires in 30 minutes)
+      const pixPayment = await pushinpay.createPixPayment(
+        amountInCents,
+        webhookUrl,
+        30 // Expires in 30 minutes
+      );
+
+      // Store PushinPay transaction ID in order
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          pushinpayTxId: pixPayment.id,
+        },
       });
 
-      if (!paymentResponse.success) {
-        // Update order status to failed
-        await prisma.order.update({
-          where: { id: order.id },
-          data: { status: 'FAILED' },
-        });
-
-        return res.status(500).json({
-          error: 'Failed to initiate payment',
-          details: paymentResponse.error,
-        });
-      }
+      console.log('Payment response data:', {
+        hasQrCode: !!pixPayment.qr_code,
+        hasQrCodeBase64: !!pixPayment.qr_code_base64,
+        qrCodeBase64Length: pixPayment.qr_code_base64?.length,
+        qrCodeBase64Preview: pixPayment.qr_code_base64?.substring(0, 50),
+      });
 
       res.json({
-        message: 'Payment initiated successfully',
+        success: true,
         orderId: order.id,
-        paymentId: paymentResponse.paymentId,
-        paymentUrl: paymentResponse.paymentUrl,
-        amount: price.amount,
-        currency: price.currency,
+        pushinpayTransactionId: pixPayment.id,
+        pixCode: pixPayment.qr_code, // Copy-paste PIX code
+        pixQrCodeBase64: pixPayment.qr_code_base64, // QR code image
+        amount: PushinPayService.formatCurrency(amountInCents),
+        amountInCents: pixPayment.value,
+        status: pixPayment.status,
+        expiresAt: pixPayment.expires_at,
+        productName: price.product.name,
+        priceCategory: price.category,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Payment initiation error:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({
+        error: 'Failed to initiate payment',
+        message: error.message,
+      });
     }
   }
 );
@@ -99,25 +112,21 @@ router.post(
  * POST /api/payments/webhook
  * Webhook endpoint for PushinPay payment notifications
  * This endpoint should be registered in your PushinPay dashboard
+ *
+ * PushinPay will call this endpoint when payment status changes
  */
 router.post('/webhook', async (req: Request, res: Response) => {
   try {
-    const signature = req.headers['x-pushinpay-signature'] as string;
-    const payload = JSON.stringify(req.body);
+    console.log('Received PushinPay webhook:', req.body);
 
-    // Verify webhook signature
-    // TODO: Implement actual signature verification
-    const isValid = verifyWebhookSignature(payload, signature);
+    const pushinpay = getPushinPayService();
+    const webhookData = pushinpay.parseWebhookPayload(req.body);
 
-    if (!isValid) {
-      return res.status(401).json({ error: 'Invalid webhook signature' });
-    }
-
-    const { orderId, status, transactionId } = req.body;
-
-    // Find order
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
+    // Find order by PushinPay transaction ID
+    const order = await prisma.order.findFirst({
+      where: {
+        pushinpayTxId: webhookData.id,
+      },
       include: {
         price: {
           include: {
@@ -128,34 +137,39 @@ router.post('/webhook', async (req: Request, res: Response) => {
     });
 
     if (!order) {
+      console.error('Order not found for transaction:', webhookData.id);
       return res.status(404).json({ error: 'Order not found' });
     }
 
     // Update order based on payment status
-    if (status === 'completed') {
-      // USE THE DELIVERY LINK FROM THE PRICE MODEL
-      // No longer generate placeholder link - use the specific deliveryLink for this price tier
+    if (webhookData.status === 'paid') {
+      // Payment successful - use the delivery link from the price tier
       const downloadLink = order.price.deliveryLink;
 
-      // Update order
       await prisma.order.update({
-        where: { id: orderId },
+        where: { id: order.id },
         data: {
           status: 'COMPLETED',
           downloadLink,
         },
       });
 
+      console.log(
+        `Order ${order.id} completed. Download link: ${downloadLink}`
+      );
+
       // TODO: Send email to customer with download link
-      console.log(`Order ${orderId} completed. Download link: ${downloadLink}`);
-    } else if (status === 'failed') {
+    } else if (webhookData.status === 'expired') {
       await prisma.order.update({
-        where: { id: orderId },
+        where: { id: order.id },
         data: { status: 'FAILED' },
       });
+
+      console.log(`Order ${order.id} expired`);
     }
 
-    res.json({ message: 'Webhook processed successfully' });
+    // Return 200 OK to acknowledge receipt
+    res.json({ success: true, message: 'Webhook processed' });
   } catch (error) {
     console.error('Webhook processing error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -164,7 +178,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
 /**
  * GET /api/payments/order/:orderId
- * Get order status
+ * Get order status and details
  * Protected route - requires authentication
  */
 router.get(
@@ -199,6 +213,37 @@ router.get(
     } catch (error) {
       console.error('Error fetching order:', error);
       res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+);
+
+/**
+ * GET /api/payments/check-status/:transactionId
+ * Check PushinPay transaction status
+ * Protected route - requires authentication
+ *
+ * NOTE: Use sparingly - limited to once per minute by PushinPay
+ */
+router.get(
+  '/check-status/:transactionId',
+  authenticateToken,
+  async (req: Request, res: Response) => {
+    try {
+      const { transactionId } = req.params;
+
+      const pushinpay = getPushinPayService();
+      const status = await pushinpay.getTransactionStatus(transactionId);
+
+      res.json({
+        success: true,
+        transaction: status,
+      });
+    } catch (error: any) {
+      console.error('Status check error:', error);
+      res.status(500).json({
+        error: 'Failed to check payment status',
+        message: error.message,
+      });
     }
   }
 );

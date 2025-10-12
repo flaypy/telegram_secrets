@@ -65,16 +65,18 @@ model Price {
 }
 
 model Order {
-  id           String      @id @default(uuid())
-  status       OrderStatus @default(PENDING)
-  userId       String
-  priceId      String
-  downloadLink String?     // Generated upon completion
-  createdAt    DateTime    @default(now())
+  id                   String      @id @default(uuid())
+  status               OrderStatus @default(PENDING)
+  userId               String
+  priceId              String
+  pushinpayTxId        String?     // PushinPay transaction ID
+  downloadLink         String?     // Generated upon completion
+  createdAt            DateTime    @default(now())
 
-  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  price        Price       @relation(fields: [priceId], references: [id])
+  user                 User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  price                Price       @relation(fields: [priceId], references: [id])
 
+  @@index([pushinpayTxId])
   @@map("orders")
 }
 
@@ -87,4 +89,13 @@ model ProductRegion {
 
   @@unique([productId, countryCode])
   @@map("product_regions")
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
 }

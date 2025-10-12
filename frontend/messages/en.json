@@ -40,6 +40,7 @@
     "title": "Admin Panel",
     "products": "Products",
     "orders": "Orders",
+    "settings": "Settings",
     "createProduct": "Create Product",
     "editProduct": "Edit Product",
     "productName": "Product Name",
@@ -53,7 +54,9 @@
   },
   "footer": {
     "rights": "All rights reserved",
-    "selectLanguage": "Language"
+    "selectLanguage": "Language",
+    "contact": "Contact",
+    "supportTelegram": "Support"
   },
   "metadata": {
     "siteName": "Telegram Secrets",
@@ -76,5 +79,25 @@
     "telegramLinkNotAvailable": "Telegram purchase link not available",
     "whyTelegram": "Why Telegram?",
     "whyTelegramDesc": "We use Telegram for secure, private transactions with instant delivery and 24/7 support."
+  },
+  "payment": {
+    "pixPayment": "PIX Payment",
+    "scanQrCode": "Scan the QR code or copy the PIX code to complete your purchase",
+    "amountToPay": "Amount to pay",
+    "scanWithApp": "Scan QR Code with your banking app",
+    "openBankApp": "Open your bank app and scan this QR code",
+    "qrCodeNotAvailable": "QR Code not available. Please use the PIX code below.",
+    "orCopyCode": "Or copy the PIX code",
+    "copyPixCode": "Copy PIX Code",
+    "copied": "✓ Copied!",
+    "instructions": "1. Copy the code above\n2. Open your banking app\n3. Go to PIX → Pay → Paste code\n4. Confirm the payment",
+    "waitingConfirmation": "Waiting for payment confirmation...",
+    "checkingStatus": "Checking payment status automatically",
+    "checkStatusNow": "Check Status Now",
+    "checking": "Checking...",
+    "paymentExpires": "Payment expires in",
+    "paymentNotFound": "Payment information not found",
+    "paymentFailed": "Payment expired or failed",
+    "backToStore": "Back to Store"
   }
 }
