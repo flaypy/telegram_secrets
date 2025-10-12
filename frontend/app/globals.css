@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-noir-darker text-gray-100 antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-accent-gold text-noir-darker font-semibold rounded-lg
+    hover:bg-accent-gold/90 transition-all duration-300 hover:scale-105;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 border-2 border-accent-gold text-accent-gold font-semibold
+    rounded-lg hover:bg-accent-gold hover:text-noir-darker transition-all duration-300;
+  }
+
+  .card-noir {
+    @apply bg-noir-dark border border-noir-light rounded-lg p-6
+    hover:border-accent-gold/50 transition-all duration-300;
+  }
+
+  .input-noir {
+    @apply w-full px-4 py-2 bg-noir-medium border border-noir-light
+    rounded-lg text-gray-100 focus:border-accent-gold focus:outline-none
+    focus:ring-2 focus:ring-accent-gold/20 transition-all;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #d4af37;
+}

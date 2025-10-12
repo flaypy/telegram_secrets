@@ -1,0 +1,88 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // hashed password
+  role      Role     @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    Order[]
+
+  @@map("users")
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String   @db.Text
+  imageUrl    String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  prices        Price[]
+  regions       ProductRegion[]
+
+  @@map("products")
+}
+
+model Price {
+  id        String   @id @default(uuid())
+  amount    Float
+  currency  String   // e.g., "BRL", "USD", "EUR"
+  category  String   // e.g., "HD", "4K", "SD"
+  productId String
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orders    Order[]
+
+  @@map("prices")
+}
+
+model Order {
+  id           String      @id @default(uuid())
+  status       OrderStatus @default(PENDING)
+  userId       String
+  priceId      String
+  downloadLink String?     // Generated upon completion
+  createdAt    DateTime    @default(now())
+
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  price        Price       @relation(fields: [priceId], references: [id])
+
+  @@map("orders")
+}
+
+model ProductRegion {
+  id          String   @id @default(uuid())
+  productId   String
+  countryCode String   // ISO 2-letter code, e.g., "BR", "US", "ES"
+
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, countryCode])
+  @@map("product_regions")
+}

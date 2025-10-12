@@ -1,0 +1,58 @@
+{
+  "common": {
+    "loading": "Carregando...",
+    "error": "Ocorreu um erro",
+    "close": "Fechar",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "edit": "Editar"
+  },
+  "nav": {
+    "home": "Início",
+    "store": "Loja",
+    "admin": "Admin",
+    "login": "Entrar",
+    "logout": "Sair"
+  },
+  "home": {
+    "title": "Telegram Secrets",
+    "subtitle": "Conteúdo Digital Exclusivo",
+    "tagline": "Entre no mundo do conteúdo exclusivo de alta qualidade. Um clube secreto para aqueles que buscam o melhor.",
+    "exploreButton": "Explorar Coleção",
+    "featuresTitle": "Por Que Nos Escolher",
+    "feature1Title": "Conteúdo Exclusivo",
+    "feature1Desc": "Coleção selecionada de conteúdo digital premium",
+    "feature2Title": "Seguro e Privado",
+    "feature2Desc": "Sua privacidade é nossa prioridade",
+    "feature3Title": "Acesso Instantâneo",
+    "feature3Desc": "Download imediato após a compra"
+  },
+  "store": {
+    "title": "Nossa Coleção",
+    "subtitle": "Navegue pelo nosso catálogo exclusivo",
+    "noProducts": "Nenhum produto disponível em sua região",
+    "detectedCountry": "Localização detectada",
+    "priceFrom": "A partir de",
+    "viewDetails": "Ver Detalhes"
+  },
+  "admin": {
+    "title": "Painel Administrativo",
+    "products": "Produtos",
+    "orders": "Pedidos",
+    "createProduct": "Criar Produto",
+    "editProduct": "Editar Produto",
+    "productName": "Nome do Produto",
+    "productDescription": "Descrição",
+    "productImage": "URL da Imagem",
+    "isActive": "Ativo",
+    "noOrders": "Nenhum pedido ainda",
+    "orderStatus": "Status",
+    "orderDate": "Data",
+    "customer": "Cliente"
+  },
+  "footer": {
+    "rights": "Todos os direitos reservados",
+    "selectLanguage": "Idioma"
+  }
+}
