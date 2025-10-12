@@ -70,8 +70,8 @@ NEXT_PUBLIC_BING_VERIFICATION=your_verification_code
 
 1. **Setup environment file:**
    ```bash
-   cp .env.production .env.production.local
-   # Edit .env.production.local with your actual values
+   cp .env.production.local .env.production.local.local
+   # Edit .env.production.local.local with your actual values
    ```
 
 2. **Login to Docker Hub:**
@@ -95,7 +95,7 @@ NEXT_PUBLIC_BING_VERIFICATION=your_verification_code
    ```bash
    # Copy these files to your server:
    - docker-compose.prod.yml
-   - .env.production (rename to .env.production.local and edit with server values)
+   - .env.production.local (rename to .env.production.local.local and edit with server values)
    ```
 
 2. **Login to Docker Hub:**

@@ -60,7 +60,7 @@ NEXT_PUBLIC_BING_VERIFICATION=your_bing_verification_code
 
 1. Copy `.env.production` and update all required values:
 ```bash
-cp .env.production .env.production.local
+cp .env.production.local .env.production.local.local
 ```
 
 2. Edit `.env.production.local` with your actual values
@@ -79,9 +79,9 @@ Build both frontend and backend images:
 
 ```bash
 # Load environment variables
-set -a && source .env.production.local && set +a  # Linux/Mac
+set -a && source .env.production.local.local && set +a  # Linux/Mac
 # OR for Windows PowerShell:
-Get-Content .env.production.local | ForEach-Object { if ($_ -match '^(.+)=(.+)$') { [Environment]::SetEnvironmentVariable($matches[1], $matches[2]) } }
+Get-Content .env.production.local.local | ForEach-Object { if ($_ -match '^(.+)=(.+)$') { [Environment]::SetEnvironmentVariable($matches[1], $matches[2]) } }
 
 # Build images
 docker-compose -f docker-compose.build.yml build
@@ -125,9 +125,9 @@ git clone <your-repo-url>
 cd telegram_secrets
 
 # Copy your environment file
-cp .env.production .env.production.local
-# Edit .env.production.local with production values
-nano .env.production.local
+cp .env.production.local .env.production.local.local
+# Edit .env.production.local.local with production values
+nano .env.production.local.local
 ```
 
 3. Login to Docker Hub on server:
@@ -138,7 +138,7 @@ docker login
 4. Pull latest images:
 ```bash
 # Load environment variables
-export $(cat .env.production.local | xargs)
+export $(cat .env.production.local.local | xargs)
 
 # Pull images
 docker pull $DOCKER_USERNAME/$BACKEND_IMAGE_NAME:$IMAGE_TAG
@@ -147,7 +147,7 @@ docker pull $DOCKER_USERNAME/$FRONTEND_IMAGE_NAME:$IMAGE_TAG
 
 5. Start services:
 ```bash
-docker-compose -f docker-compose.prod.yml --env-file .env.production.local up -d
+docker-compose -f docker-compose.prod.yml --env-file .env.production.local.local up -d
 ```
 
 ### Step 6: Run Database Migrations (First Time Only)
@@ -197,12 +197,12 @@ docker push $DOCKER_USERNAME/$FRONTEND_IMAGE_NAME:$IMAGE_TAG
 
 1. Pull latest images:
 ```bash
-docker-compose -f docker-compose.prod.yml --env-file .env.production.local pull
+docker-compose -f docker-compose.prod.yml --env-file .env.production.local.local pull
 ```
 
 2. Restart services:
 ```bash
-docker-compose -f docker-compose.prod.yml --env-file .env.production.local up -d
+docker-compose -f docker-compose.prod.yml --env-file .env.production.local.local up -d
 ```
 
 3. If database schema changed, run migrations:
@@ -220,7 +220,7 @@ Create `scripts/build-and-push.sh`:
 set -e
 
 # Load environment variables
-export $(cat .env.production.local | grep -v '^#' | xargs)
+export $(cat .env.production.local.local | grep -v '^#' | xargs)
 
 echo "Building images..."
 docker-compose -f docker-compose.build.yml build
@@ -242,16 +242,16 @@ Create `scripts/deploy.sh`:
 set -e
 
 # Load environment variables
-export $(cat .env.production.local | grep -v '^#' | xargs)
+export $(cat .env.production.local.local | grep -v '^#' | xargs)
 
 echo "Pulling latest images..."
-docker-compose -f docker-compose.prod.yml --env-file .env.production.local pull
+docker-compose -f docker-compose.prod.yml --env-file .env.production.local.local pull
 
 echo "Stopping old containers..."
-docker-compose -f docker-compose.prod.yml --env-file .env.production.local down
+docker-compose -f docker-compose.prod.yml --env-file .env.production.local.local down
 
 echo "Starting new containers..."
-docker-compose -f docker-compose.prod.yml --env-file .env.production.local up -d
+docker-compose -f docker-compose.prod.yml --env-file .env.production.local.local up -d
 
 echo "Waiting for services to be ready..."
 sleep 10

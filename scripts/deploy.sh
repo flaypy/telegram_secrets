@@ -8,8 +8,8 @@ echo "=========================================="
 echo "Telegram Secrets - Deploy from Docker Hub"
 echo "=========================================="
 
-# Check if .env.production.local exists
-if [ ! -f .env.production.local ]; then
+# Check if .env.production.local.local exists
+if [ ! -f .env.production.local.local ]; then
     echo "ERROR: .env.production.local not found!"
     echo "Please create .env.production.local with your production configuration"
     exit 1
@@ -17,7 +17,7 @@ fi
 
 # Load environment variables
 echo "Loading environment variables..."
-export $(cat .env.production.local | grep -v '^#' | xargs)
+export $(cat .env.production.local.local | grep -v '^#' | xargs)
 
 # Validate required variables
 if [ -z "$DOCKER_USERNAME" ]; then
@@ -60,13 +60,13 @@ echo ""
 echo "=========================================="
 echo "Step 2: Stopping Old Containers"
 echo "=========================================="
-docker-compose -f docker-compose.prod.yml --env-file .env.production.local down
+docker-compose -f docker-compose.prod.yml --env-file .env.production.local.local down
 
 echo ""
 echo "=========================================="
 echo "Step 3: Starting New Containers"
 echo "=========================================="
-docker-compose -f docker-compose.prod.yml --env-file .env.production.local up -d
+docker-compose -f docker-compose.prod.yml --env-file .env.production.local.local up -d
 
 echo ""
 echo "Waiting for services to start..."
