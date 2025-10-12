@@ -1,129 +1,137 @@
 #!/bin/bash
+# Deploy Script for Server
+# Run this on your SERVER to pull and deploy latest images from Docker Hub
 
-# ===================================================
-# Telegram Secrets - Production Deployment Script
-# ===================================================
-# Usage: ./scripts/deploy.sh
-
-set -e
+set -e  # Exit on any error
 
 echo "=========================================="
-echo "Telegram Secrets - Production Deployment"
+echo "Telegram Secrets - Deploy from Docker Hub"
 echo "=========================================="
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-# Check if running as root
-if [ "$EUID" -eq 0 ]; then
-   echo -e "${RED}Please do not run as root${NC}"
-   exit 1
-fi
-
-# Check if .env.production exists
-if [ ! -f ".env.production" ]; then
-    echo -e "${RED}Error: .env.production not found${NC}"
-    echo "Please create .env.production from .env.production.example"
+# Check if .env.production.local exists
+if [ ! -f .env.production.local ]; then
+    echo "ERROR: .env.production.local not found!"
+    echo "Please create .env.production.local with your production configuration"
     exit 1
 fi
 
 # Load environment variables
-export $(cat .env.production | grep -v '^#' | xargs)
+echo "Loading environment variables..."
+export $(cat .env.production.local | grep -v '^#' | xargs)
 
-# Check required variables
-REQUIRED_VARS=("DATABASE_URL" "JWT_SECRET" "PUSHINPAY_TOKEN" "FRONTEND_URL")
-for var in "${REQUIRED_VARS[@]}"; do
-    if [ -z "${!var}" ]; then
-        echo -e "${RED}Error: $var is not set in .env.production${NC}"
-        exit 1
-    fi
-done
-
-echo -e "${GREEN}✓${NC} Environment variables loaded"
-
-# Pull latest code
-echo ""
-echo "Pulling latest code..."
-git pull origin main
-echo -e "${GREEN}✓${NC} Code updated"
-
-# Backup database before deployment
-echo ""
-echo "Creating database backup..."
-if [ -f "scripts/backup-database.sh" ]; then
-    chmod +x scripts/backup-database.sh
-    ./scripts/backup-database.sh || echo -e "${YELLOW}Warning: Backup failed${NC}"
-else
-    echo -e "${YELLOW}Warning: Backup script not found${NC}"
+# Validate required variables
+if [ -z "$DOCKER_USERNAME" ]; then
+    echo "ERROR: DOCKER_USERNAME not set in .env.production.local"
+    exit 1
 fi
 
-# Build Docker images
-echo ""
-echo "Building Docker images..."
-docker compose -f docker-compose.yml build --no-cache
-echo -e "${GREEN}✓${NC} Images built"
-
-# Stop services
-echo ""
-echo "Stopping services..."
-docker compose -f docker-compose.yml down
-echo -e "${GREEN}✓${NC} Services stopped"
-
-# Start services
-echo ""
-echo "Starting services..."
-docker compose -f docker-compose.yml up -d
-echo -e "${GREEN}✓${NC} Services started"
-
-# Wait for services to be healthy
-echo ""
-echo "Waiting for services to be healthy..."
-sleep 10
-
-# Run database migrations
-echo ""
-echo "Running database migrations..."
-docker compose -f docker-compose.yml exec -T backend npx prisma migrate deploy
-echo -e "${GREEN}✓${NC} Migrations completed"
-
-# Check service status
-echo ""
-echo "Checking service status..."
-docker compose -f docker-compose.yml ps
-
-# Health checks
-echo ""
-echo "Running health checks..."
-
-# Check backend
-if curl -f -s http://localhost:3001/health > /dev/null; then
-    echo -e "${GREEN}✓${NC} Backend is healthy"
-else
-    echo -e "${RED}✗${NC} Backend health check failed"
+if [ -z "$BACKEND_IMAGE_NAME" ]; then
+    echo "ERROR: BACKEND_IMAGE_NAME not set in .env.production.local"
+    exit 1
 fi
 
-# Check frontend
-if curl -f -s http://localhost:3000 > /dev/null; then
-    echo -e "${GREEN}✓${NC} Frontend is healthy"
-else
-    echo -e "${RED}✗${NC} Frontend health check failed"
+if [ -z "$FRONTEND_IMAGE_NAME" ]; then
+    echo "ERROR: FRONTEND_IMAGE_NAME not set in .env.production.local"
+    exit 1
 fi
 
-# Display logs
+IMAGE_TAG=${IMAGE_TAG:-latest}
+
 echo ""
-echo "Recent logs:"
-docker compose -f docker-compose.yml logs --tail=50
+echo "Configuration:"
+echo "  Docker Hub User: $DOCKER_USERNAME"
+echo "  Backend Image: $DOCKER_USERNAME/$BACKEND_IMAGE_NAME:$IMAGE_TAG"
+echo "  Frontend Image: $DOCKER_USERNAME/$FRONTEND_IMAGE_NAME:$IMAGE_TAG"
+echo ""
+
+# Check if docker-compose.prod.yml exists
+if [ ! -f docker-compose.prod.yml ]; then
+    echo "ERROR: docker-compose.prod.yml not found!"
+    exit 1
+fi
+
+echo "=========================================="
+echo "Step 1: Pulling Latest Images"
+echo "=========================================="
+docker pull $DOCKER_USERNAME/$BACKEND_IMAGE_NAME:$IMAGE_TAG
+docker pull $DOCKER_USERNAME/$FRONTEND_IMAGE_NAME:$IMAGE_TAG
 
 echo ""
 echo "=========================================="
-echo -e "${GREEN}Deployment completed successfully!${NC}"
+echo "Step 2: Stopping Old Containers"
+echo "=========================================="
+docker-compose -f docker-compose.prod.yml --env-file .env.production.local down
+
+echo ""
+echo "=========================================="
+echo "Step 3: Starting New Containers"
+echo "=========================================="
+docker-compose -f docker-compose.prod.yml --env-file .env.production.local up -d
+
+echo ""
+echo "Waiting for services to start..."
+sleep 5
+
+# Check if this is first deployment (need to run migrations)
+if ! docker ps -a | grep -q "telegram_secrets_backend_prod"; then
+    FIRST_DEPLOY=true
+else
+    FIRST_DEPLOY=false
+fi
+
+if [ "$FIRST_DEPLOY" = true ]; then
+    echo ""
+    echo "=========================================="
+    echo "First Deployment Detected"
+    echo "=========================================="
+    echo "Waiting for database to be ready..."
+    sleep 10
+
+    echo "Running database migrations..."
+    docker exec telegram_secrets_backend_prod npx prisma migrate deploy
+fi
+
+echo ""
+echo "=========================================="
+echo "Deployment Status"
+echo "=========================================="
+docker-compose -f docker-compose.prod.yml ps
+
+echo ""
+echo "=========================================="
+echo "Health Check"
+echo "=========================================="
+sleep 5
+
+# Check backend health
+echo -n "Backend health check: "
+if curl -sf http://localhost:3001/health > /dev/null; then
+    echo "✓ HEALTHY"
+else
+    echo "✗ UNHEALTHY (might still be starting up)"
+fi
+
+# Check frontend health
+echo -n "Frontend health check: "
+if curl -sf http://localhost:3000/ > /dev/null; then
+    echo "✓ HEALTHY"
+else
+    echo "✗ UNHEALTHY (might still be starting up)"
+fi
+
+echo ""
+echo "=========================================="
+echo "Deployment Complete!"
 echo "=========================================="
 echo ""
 echo "Useful commands:"
-echo "  View logs:    docker compose -f docker-compose.prod.yml logs -f"
-echo "  Check status: docker compose -f docker-compose.prod.yml ps"
-echo "  Restart:      docker compose -f docker-compose.prod.yml restart"
+echo "  View logs:           docker-compose -f docker-compose.prod.yml logs -f"
+echo "  Restart services:    docker-compose -f docker-compose.prod.yml restart"
+echo "  Stop services:       docker-compose -f docker-compose.prod.yml down"
+echo "  Check status:        docker-compose -f docker-compose.prod.yml ps"
 echo ""
+
+# Show recent logs
+echo "Recent logs:"
+echo "----------------------------------------"
+docker-compose -f docker-compose.prod.yml logs --tail=20

@@ -1,15 +1,22 @@
 # Multi-stage build for production
-FROM node:18-alpine AS builder
-
+FROM node:18-alpine AS deps
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
-RUN npm ci --only=production && \
-    npm cache clean --force
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci && npm cache clean --force
+
+# Build stage
+FROM node:18-alpine AS builder
+WORKDIR /app
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package*.json ./
+COPY --from=deps /app/prisma ./prisma/
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -20,23 +27,36 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
-# Production stage
-FROM node:18-alpine
+# Production dependencies stage
+FROM node:18-alpine AS prod-deps
+WORKDIR /app
 
+COPY package*.json ./
+COPY prisma ./prisma/
+
+# Install only production dependencies
+RUN npm ci --only=production && \
+    npx prisma generate && \
+    npm cache clean --force
+
+# Production stage
+FROM node:18-alpine AS runner
 WORKDIR /app
 
 # Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init curl
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
+# Copy production dependencies
+COPY --from=prod-deps --chown=nodejs:nodejs /app/node_modules ./node_modules
+COPY --from=prod-deps --chown=nodejs:nodejs /app/package*.json ./
+
 # Copy built application
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
 
 # Switch to non-root user
 USER nodejs
@@ -44,9 +64,12 @@ USER nodejs
 # Expose port
 EXPOSE 3001
 
+ENV NODE_ENV=production
+ENV PORT=3001
+
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
