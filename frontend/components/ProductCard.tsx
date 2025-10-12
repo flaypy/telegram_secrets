@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/routing';
 import { Product } from '@/lib/api';
 
 interface ProductCardProps {
@@ -16,7 +17,8 @@ export default function ProductCard({ product }: ProductCardProps) {
   }, product.prices[0]);
 
   return (
-    <div className="card-noir group cursor-pointer">
+    <Link href={`/store/${product.id}`} className="block">
+      <div className="card-noir group cursor-pointer">
       {/* Image */}
       <div className="relative h-64 mb-4 rounded-lg overflow-hidden bg-noir-medium">
         <img
@@ -54,9 +56,9 @@ export default function ProductCard({ product }: ProductCardProps) {
               </div>
             </div>
           )}
-          <button className="btn-secondary text-sm">
+          <span className="btn-secondary text-sm">
             {t('viewDetails')}
-          </button>
+          </span>
         </div>
 
         {/* Categories */}
@@ -73,6 +75,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </Link>
   );
 }

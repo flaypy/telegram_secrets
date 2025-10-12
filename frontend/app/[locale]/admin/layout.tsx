@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
+import { Link, useRouter } from '@/i18n/routing';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();

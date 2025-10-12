@@ -1,11 +1,21 @@
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/routing';
+import { WebsiteStructuredData } from '@/components/StructuredData';
 
-export default function HomePage() {
-  const t = useTranslations('home');
+export default async function HomePage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'home' });
 
   return (
-    <div className="relative">
+    <>
+      {/* SEO Structured Data */}
+      <WebsiteStructuredData locale={locale} />
+
+      <div className="relative">
       {/* Hero Section */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
         {/* Gradient overlay */}
@@ -115,5 +125,6 @@ export default function HomePage() {
         </div>
       </section>
     </div>
+    </>
   );
 }

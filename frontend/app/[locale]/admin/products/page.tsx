@@ -2,23 +2,59 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { adminAPI, Product } from '@/lib/api';
+import { adminAPI, Product, Price } from '@/lib/api';
+
+// Available countries for region selection
+const COUNTRIES = [
+  { code: 'NON_BR', name: '🌍 All Regions EXCEPT Brazil', special: true },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'US', name: 'United States' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'MX', name: 'Mexico' },
+  { code: 'AR', name: 'Argentina' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'FR', name: 'France' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'UK', name: 'United Kingdom' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'CN', name: 'China' },
+];
 
 export default function AdminProductsPage() {
   const t = useTranslations('admin');
   const tCommon = useTranslations('common');
+
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
 
-  // Form state
-  const [formData, setFormData] = useState({
+  // Product form state
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productForm, setProductForm] = useState({
     name: '',
     description: '',
     imageUrl: '',
+    telegramLink: '',
     isActive: true,
   });
+
+  // Price form state
+  const [showPriceForm, setShowPriceForm] = useState<string | null>(null);
+  const [editingPrice, setEditingPrice] = useState<Price | null>(null);
+  const [priceForm, setPriceForm] = useState({
+    amount: '',
+    currency: 'BRL',
+    category: 'HD',
+    deliveryLink: '',
+  });
+
+  // Region form state
+  const [showRegionForm, setShowRegionForm] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState('BR');
 
   useEffect(() => {
     fetchProducts();
@@ -30,48 +66,153 @@ export default function AdminProductsPage() {
       setProducts(data.products);
     } catch (err) {
       console.error('Failed to fetch products:', err);
+      alert('Failed to load products');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Product CRUD
+  const handleProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       if (editingProduct) {
-        await adminAPI.updateProduct(editingProduct.id, formData);
+        await adminAPI.updateProduct(editingProduct.id, {
+          ...productForm,
+          telegramLink: productForm.telegramLink || undefined,
+        });
       } else {
-        await adminAPI.createProduct(formData);
+        await adminAPI.createProduct({
+          ...productForm,
+          telegramLink: productForm.telegramLink || undefined,
+        });
       }
-      setShowForm(false);
+      setShowProductForm(false);
       setEditingProduct(null);
-      setFormData({ name: '', description: '', imageUrl: '', isActive: true });
+      resetProductForm();
       fetchProducts();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save product:', err);
+      alert(err.response?.data?.error || 'Failed to save product');
     }
   };
 
-  const handleEdit = (product: Product) => {
+  const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
-    setFormData({
+    setProductForm({
       name: product.name,
       description: product.description,
       imageUrl: product.imageUrl,
+      telegramLink: product.telegramLink || '',
       isActive: product.isActive,
     });
-    setShowForm(true);
+    setShowProductForm(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
-
+  const handleDeleteProduct = async (id: string) => {
+    if (!confirm('Are you sure? This will delete all prices and regions.')) return;
     try {
       await adminAPI.deleteProduct(id);
       fetchProducts();
     } catch (err) {
       console.error('Failed to delete product:', err);
+      alert('Failed to delete product');
     }
+  };
+
+  const resetProductForm = () => {
+    setProductForm({
+      name: '',
+      description: '',
+      imageUrl: '',
+      telegramLink: '',
+      isActive: true,
+    });
+  };
+
+  // Price CRUD
+  const handlePriceSubmit = async (e: React.FormEvent, productId: string) => {
+    e.preventDefault();
+    try {
+      const priceData = {
+        amount: parseFloat(priceForm.amount),
+        currency: priceForm.currency,
+        category: priceForm.category,
+        deliveryLink: priceForm.deliveryLink,
+      };
+
+      if (editingPrice) {
+        await adminAPI.updatePrice(editingPrice.id, priceData);
+      } else {
+        await adminAPI.addPrice(productId, priceData);
+      }
+
+      setShowPriceForm(null);
+      setEditingPrice(null);
+      resetPriceForm();
+      fetchProducts();
+    } catch (err: any) {
+      console.error('Failed to save price:', err);
+      alert(err.response?.data?.error || 'Failed to save price');
+    }
+  };
+
+  const handleEditPrice = (price: Price, productId: string) => {
+    setEditingPrice(price);
+    setPriceForm({
+      amount: price.amount.toString(),
+      currency: price.currency,
+      category: price.category,
+      deliveryLink: price.deliveryLink,
+    });
+    setShowPriceForm(productId);
+  };
+
+  const handleDeletePrice = async (priceId: string) => {
+    if (!confirm('Delete this price tier?')) return;
+    try {
+      await adminAPI.deletePrice(priceId);
+      fetchProducts();
+    } catch (err) {
+      console.error('Failed to delete price:', err);
+      alert('Failed to delete price');
+    }
+  };
+
+  const resetPriceForm = () => {
+    setPriceForm({
+      amount: '',
+      currency: 'BRL',
+      category: 'HD',
+      deliveryLink: '',
+    });
+  };
+
+  // Region CRUD
+  const handleAddRegion = async (productId: string) => {
+    try {
+      await adminAPI.addProductRegion(productId, selectedCountry);
+      setShowRegionForm(null);
+      fetchProducts();
+    } catch (err: any) {
+      console.error('Failed to add region:', err);
+      alert(err.response?.data?.error || 'Failed to add region');
+    }
+  };
+
+  const handleDeleteRegion = async (regionId: string) => {
+    if (!confirm('Remove this region?')) return;
+    try {
+      await adminAPI.deleteProductRegion(regionId);
+      fetchProducts();
+    } catch (err) {
+      console.error('Failed to delete region:', err);
+      alert('Failed to delete region');
+    }
+  };
+
+  const toggleExpand = (productId: string) => {
+    setExpandedProduct(expandedProduct === productId ? null : productId);
   };
 
   if (loading) {
@@ -84,78 +225,86 @@ export default function AdminProductsPage() {
 
   return (
     <div>
-      {/* Create Button */}
+      {/* Create Product Button */}
       <div className="mb-6">
         <button
           onClick={() => {
-            setShowForm(!showForm);
+            setShowProductForm(!showProductForm);
             setEditingProduct(null);
-            setFormData({ name: '', description: '', imageUrl: '', isActive: true });
+            resetProductForm();
           }}
           className="btn-primary"
         >
-          {showForm ? tCommon('cancel') : t('createProduct')}
+          {showProductForm ? tCommon('cancel') : t('createProduct')}
         </button>
       </div>
 
-      {/* Form */}
-      {showForm && (
+      {/* Product Form */}
+      {showProductForm && (
         <div className="card-noir mb-8">
           <h2 className="text-2xl font-bold mb-6 text-accent-gold">
             {editingProduct ? t('editProduct') : t('createProduct')}
           </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleProductSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">
-                {t('productName')}
-              </label>
+              <label className="block text-sm font-medium mb-2">Product Name *</label>
               <input
                 type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                value={productForm.name}
+                onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                 className="input-noir"
                 required
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium mb-2">
-                {t('productDescription')}
-              </label>
+              <label className="block text-sm font-medium mb-2">Description *</label>
               <textarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
+                value={productForm.description}
+                onChange={(e) => setProductForm({ ...productForm, description: e.target.value })}
                 className="input-noir"
                 rows={4}
                 required
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium mb-2">
-                {t('productImage')}
-              </label>
+              <label className="block text-sm font-medium mb-2">Image URL *</label>
               <input
                 type="url"
-                value={formData.imageUrl}
-                onChange={(e) =>
-                  setFormData({ ...formData, imageUrl: e.target.value })
-                }
+                value={productForm.imageUrl}
+                onChange={(e) => setProductForm({ ...productForm, imageUrl: e.target.value })}
                 className="input-noir"
                 required
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Telegram Link (for non-BR customers)
+              </label>
+              <input
+                type="url"
+                value={productForm.telegramLink}
+                onChange={(e) => setProductForm({ ...productForm, telegramLink: e.target.value })}
+                className="input-noir"
+                placeholder="https://t.me/your_channel"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Optional - Used for customers outside Brazil
+              </p>
+            </div>
+
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={formData.isActive}
-                onChange={(e) =>
-                  setFormData({ ...formData, isActive: e.target.checked })
-                }
+                checked={productForm.isActive}
+                onChange={(e) => setProductForm({ ...productForm, isActive: e.target.checked })}
                 className="w-4 h-4"
               />
-              <label className="text-sm font-medium">{t('isActive')}</label>
+              <label className="text-sm font-medium">Active</label>
             </div>
+
             <div className="flex gap-4">
               <button type="submit" className="btn-primary">
                 {tCommon('save')}
@@ -163,7 +312,7 @@ export default function AdminProductsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setShowForm(false);
+                  setShowProductForm(false);
                   setEditingProduct(null);
                 }}
                 className="btn-secondary"
@@ -175,53 +324,225 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* Products Table */}
-      <div className="card-noir overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-noir-light">
-              <th className="text-left py-3 px-4">Name</th>
-              <th className="text-left py-3 px-4">Status</th>
-              <th className="text-left py-3 px-4">Prices</th>
-              <th className="text-left py-3 px-4">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product.id} className="border-b border-noir-medium">
-                <td className="py-3 px-4">{product.name}</td>
-                <td className="py-3 px-4">
-                  <span
-                    className={`px-2 py-1 rounded text-sm ${
-                      product.isActive
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-red-500/20 text-red-400'
-                    }`}
-                  >
-                    {product.isActive ? 'Active' : 'Inactive'}
+      {/* Products List */}
+      <div className="space-y-4">
+        {products.map((product) => (
+          <div key={product.id} className="card-noir">
+            {/* Product Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-accent-gold">{product.name}</h3>
+                <p className="text-sm text-gray-400 mt-1">{product.description.substring(0, 100)}...</p>
+                <div className="flex gap-4 mt-2 text-sm">
+                  <span className={product.isActive ? 'text-green-400' : 'text-red-400'}>
+                    {product.isActive ? '● Active' : '● Inactive'}
                   </span>
-                </td>
-                <td className="py-3 px-4">{product.prices?.length || 0} price(s)</td>
-                <td className="py-3 px-4">
-                  <div className="flex gap-2">
+                  <span className="text-gray-500">{product.prices?.length || 0} prices</span>
+                  <span className="text-gray-500">{(product as any).regions?.length || 0} regions</span>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => toggleExpand(product.id)}
+                  className="btn-secondary text-sm"
+                >
+                  {expandedProduct === product.id ? 'Collapse' : 'Manage'}
+                </button>
+                <button
+                  onClick={() => handleEditProduct(product)}
+                  className="text-accent-gold hover:underline text-sm"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteProduct(product.id)}
+                  className="text-red-400 hover:underline text-sm"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            {/* Expanded Content */}
+            {expandedProduct === product.id && (
+              <div className="mt-6 space-y-6 border-t border-noir-light pt-6">
+
+                {/* Regions Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-bold text-accent-rose">Regions</h4>
                     <button
-                      onClick={() => handleEdit(product)}
-                      className="text-accent-gold hover:underline"
+                      onClick={() => setShowRegionForm(showRegionForm === product.id ? null : product.id)}
+                      className="btn-secondary text-sm"
                     >
-                      {tCommon('edit')}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="text-red-400 hover:underline"
-                    >
-                      {tCommon('delete')}
+                      {showRegionForm === product.id ? 'Cancel' : '+ Add Region'}
                     </button>
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+
+                  {showRegionForm === product.id && (
+                    <div className="bg-noir-medium p-4 rounded-lg mb-4">
+                      <select
+                        value={selectedCountry}
+                        onChange={(e) => setSelectedCountry(e.target.value)}
+                        className="input-noir mb-2"
+                      >
+                        {COUNTRIES.map((country) => (
+                          <option key={country.code} value={country.code}>
+                            {country.name} ({country.code})
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => handleAddRegion(product.id)}
+                        className="btn-primary text-sm"
+                      >
+                        Add Region
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    {(product as any).regions && (product as any).regions.length > 0 ? (
+                      (product as any).regions.map((region: any) => (
+                        <div
+                          key={region.id}
+                          className="px-3 py-1 bg-accent-purple/20 text-accent-purple rounded-full text-sm flex items-center gap-2"
+                        >
+                          {region.countryCode}
+                          <button
+                            onClick={() => handleDeleteRegion(region.id)}
+                            className="hover:text-red-400"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-sm">No regions assigned - product is invisible!</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Prices Section */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-bold text-accent-gold">Price Tiers</h4>
+                    <button
+                      onClick={() => {
+                        setShowPriceForm(showPriceForm === product.id ? null : product.id);
+                        setEditingPrice(null);
+                        resetPriceForm();
+                      }}
+                      className="btn-secondary text-sm"
+                    >
+                      {showPriceForm === product.id ? 'Cancel' : '+ Add Price'}
+                    </button>
+                  </div>
+
+                  {showPriceForm === product.id && (
+                    <form
+                      onSubmit={(e) => handlePriceSubmit(e, product.id)}
+                      className="bg-noir-medium p-4 rounded-lg mb-4 space-y-3"
+                    >
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs mb-1">Amount *</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={priceForm.amount}
+                            onChange={(e) => setPriceForm({ ...priceForm, amount: e.target.value })}
+                            className="input-noir"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs mb-1">Currency *</label>
+                          <input
+                            type="text"
+                            value={priceForm.currency}
+                            onChange={(e) => setPriceForm({ ...priceForm, currency: e.target.value })}
+                            className="input-noir"
+                            placeholder="BRL, USD"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs mb-1">Category *</label>
+                        <input
+                          type="text"
+                          value={priceForm.category}
+                          onChange={(e) => setPriceForm({ ...priceForm, category: e.target.value })}
+                          className="input-noir"
+                          placeholder="HD, 4K, SD"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs mb-1">Delivery Link * (Download URL)</label>
+                        <input
+                          type="url"
+                          value={priceForm.deliveryLink}
+                          onChange={(e) => setPriceForm({ ...priceForm, deliveryLink: e.target.value })}
+                          className="input-noir"
+                          placeholder="https://cdn.example.com/file.zip"
+                          required
+                        />
+                      </div>
+
+                      <button type="submit" className="btn-primary text-sm">
+                        {editingPrice ? 'Update Price' : 'Add Price'}
+                      </button>
+                    </form>
+                  )}
+
+                  <div className="space-y-2">
+                    {product.prices && product.prices.length > 0 ? (
+                      product.prices.map((price) => (
+                        <div
+                          key={price.id}
+                          className="bg-noir-medium p-3 rounded-lg flex items-center justify-between"
+                        >
+                          <div>
+                            <span className="font-bold text-accent-gold">{price.category}</span>
+                            <span className="mx-2">-</span>
+                            <span className="text-gray-300">
+                              {price.currency} {price.amount.toFixed(2)}
+                            </span>
+                            <div className="text-xs text-gray-500 mt-1 truncate max-w-md">
+                              {price.deliveryLink}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditPrice(price, product.id)}
+                              className="text-accent-gold hover:underline text-sm"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeletePrice(price.id)}
+                              className="text-red-400 hover:underline text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-gray-500 text-sm">No prices added yet</p>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

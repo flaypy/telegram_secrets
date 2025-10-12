@@ -35,13 +35,14 @@ model User {
 }
 
 model Product {
-  id          String   @id @default(uuid())
-  name        String
-  description String   @db.Text
-  imageUrl    String
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String
+  description  String   @db.Text
+  imageUrl     String
+  isActive     Boolean  @default(true)
+  telegramLink String?  // External Telegram link for non-BR purchases
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   prices        Price[]
   regions       ProductRegion[]
@@ -50,11 +51,12 @@ model Product {
 }
 
 model Price {
-  id        String   @id @default(uuid())
-  amount    Float
-  currency  String   // e.g., "BRL", "USD", "EUR"
-  category  String   // e.g., "HD", "4K", "SD"
-  productId String
+  id           String   @id @default(uuid())
+  amount       Float
+  currency     String   // e.g., "BRL", "USD", "EUR"
+  category     String   // e.g., "HD", "4K", "SD"
+  deliveryLink String   // The specific download link for this price tier
+  productId    String
 
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   orders    Order[]

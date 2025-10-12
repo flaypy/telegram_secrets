@@ -28,6 +28,7 @@ export interface Product {
   description: string;
   imageUrl: string;
   isActive: boolean;
+  telegramLink?: string | null; // External Telegram link for non-BR purchases
   prices: Price[];
   createdAt: string;
   updatedAt: string;
@@ -38,7 +39,14 @@ export interface Price {
   amount: number;
   currency: string;
   category: string;
+  deliveryLink: string; // Specific download link for this price tier
   productId: string;
+}
+
+export interface ProductRegion {
+  id: string;
+  productId: string;
+  countryCode: string; // ISO 2-letter code
 }
 
 export interface Order {
@@ -106,7 +114,13 @@ export const adminAPI = {
     description: string;
     imageUrl: string;
     isActive?: boolean;
-    prices?: Array<{ amount: number; currency: string; category: string }>;
+    telegramLink?: string;
+    prices?: Array<{
+      amount: number;
+      currency: string;
+      category: string;
+      deliveryLink: string;
+    }>;
   }) => {
     const response = await api.post('/api/admin/products', data);
     return response.data;
@@ -119,6 +133,7 @@ export const adminAPI = {
       description?: string;
       imageUrl?: string;
       isActive?: boolean;
+      telegramLink?: string;
     }
   ) => {
     const response = await api.put(`/api/admin/products/${id}`, data);
@@ -135,11 +150,43 @@ export const adminAPI = {
     return response.data;
   },
 
+  // Region management
   addProductRegion: async (productId: string, countryCode: string) => {
     const response = await api.post('/api/admin/products/regions', {
       productId,
       countryCode,
     });
+    return response.data;
+  },
+
+  deleteProductRegion: async (regionId: string) => {
+    const response = await api.delete(`/api/admin/products/regions/${regionId}`);
+    return response.data;
+  },
+
+  // Price management
+  addPrice: async (productId: string, data: {
+    amount: number;
+    currency: string;
+    category: string;
+    deliveryLink: string;
+  }) => {
+    const response = await api.post(`/api/admin/products/${productId}/prices`, data);
+    return response.data;
+  },
+
+  updatePrice: async (priceId: string, data: {
+    amount?: number;
+    currency?: string;
+    category?: string;
+    deliveryLink?: string;
+  }) => {
+    const response = await api.put(`/api/admin/prices/${priceId}`, data);
+    return response.data;
+  },
+
+  deletePrice: async (priceId: string) => {
+    const response = await api.delete(`/api/admin/prices/${priceId}`);
     return response.data;
   },
 };

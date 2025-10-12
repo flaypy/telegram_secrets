@@ -1,6 +1,7 @@
 'use client';
 
-import { useParams, usePathname, useRouter } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
+import { useRouter } from '@/i18n/routing';
 import { locales, type Locale } from '@/i18n';
 
 const languageNames: Record<Locale, string> = {
@@ -16,9 +17,9 @@ export default function LanguageSwitcher() {
   const currentLocale = params.locale as Locale;
 
   const handleChange = (newLocale: Locale) => {
-    // Replace the locale in the pathname
-    const newPathname = pathname.replace(`/${currentLocale}`, `/${newLocale}`);
-    router.push(newPathname);
+    // Get the pathname without the locale prefix
+    const pathnameWithoutLocale = pathname.replace(`/${currentLocale}`, '') || '/';
+    router.replace(pathnameWithoutLocale, { locale: newLocale });
   };
 
   return (

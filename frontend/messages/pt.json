@@ -54,5 +54,27 @@
   "footer": {
     "rights": "Todos os direitos reservados",
     "selectLanguage": "Idioma"
+  },
+  "metadata": {
+    "siteName": "Telegram Secrets",
+    "title": "Telegram Secrets - Conteúdo Digital Exclusivo",
+    "description": "Descubra conteúdo digital premium e exclusivo. Um clube secreto para aqueles que buscam o melhor. Acesso seguro, privado e instantâneo a coleções selecionadas.",
+    "keywords": "conteúdo exclusivo, conteúdo digital premium, conteúdo privado, telegram secrets, downloads seguros, acesso instantâneo, coleção selecionada, conteúdo adulto"
+  },
+  "productDetails": {
+    "backToStore": "Voltar à Loja",
+    "detectedLocation": "Localização detectada",
+    "selectQuality": "Selecione a Qualidade",
+    "buyNow": "Comprar Agora",
+    "processing": "Processando...",
+    "noPricesAvailable": "Nenhum preço disponível para este produto",
+    "securePayment": "Pagamento Seguro",
+    "securePaymentDesc": "Seu pagamento é processado com segurança através do nosso gateway de pagamento.",
+    "purchaseViaTelegram": "Compra via Telegram",
+    "telegramPurchaseDesc": "Para clientes da sua região, as compras são concluídas através do nosso canal no Telegram para maior privacidade e conveniência.",
+    "completePurchaseOnTelegram": "Concluir Compra no Telegram",
+    "telegramLinkNotAvailable": "Link de compra no Telegram não disponível",
+    "whyTelegram": "Por que Telegram?",
+    "whyTelegramDesc": "Usamos o Telegram para transações seguras e privadas com entrega instantânea e suporte 24/7."
   }
 }

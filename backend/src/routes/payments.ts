@@ -133,11 +133,9 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
     // Update order based on payment status
     if (status === 'completed') {
-      // Generate download link
-      const downloadLink = generateDownloadLink(
-        order.id,
-        order.price.product.id
-      );
+      // USE THE DELIVERY LINK FROM THE PRICE MODEL
+      // No longer generate placeholder link - use the specific deliveryLink for this price tier
+      const downloadLink = order.price.deliveryLink;
 
       // Update order
       await prisma.order.update({
