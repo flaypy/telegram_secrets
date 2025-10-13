@@ -7,7 +7,8 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install ALL dependencies (including devDependencies for build)
-RUN npm install && npm cache clean --force
+RUN npm install && \
+    npm cache clean --force
 
 # Build stage
 FROM node:18-alpine AS builder
