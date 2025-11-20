@@ -300,19 +300,19 @@ export default function PaymentSuccessPage() {
               </code>
             </div>
 
-            <div className="flex gap-4">
+            <div className="space-y-3">
               <a
                 href={order.downloadLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-primary flex-1 text-center"
+                className="btn-primary w-full text-center block text-lg py-4"
               >
-                Download Now
+                🎁 Access Your Content Now
               </a>
 
               <button
                 onClick={copyDownloadLink}
-                className={`btn-secondary ${downloadCopied ? 'bg-green-600' : ''}`}
+                className={`btn-secondary w-full ${downloadCopied ? 'bg-green-600' : ''}`}
               >
                 {downloadCopied ? '✓ Copied' : 'Copy Link'}
               </button>

@@ -27,6 +27,7 @@ export interface Product {
   name: string;
   description: string;
   imageUrl: string;
+  previewMediaUrl?: string | null; // Optional preview media (video/image/gif) URL
   isActive: boolean;
   telegramLink?: string | null; // External Telegram link for non-BR purchases
   prices: Price[];
@@ -54,7 +55,9 @@ export interface Order {
   status: 'PENDING' | 'COMPLETED' | 'FAILED';
   userId: string;
   priceId: string;
+  gateway?: 'PUSHINPAY' | 'SYNCPAY';
   pushinpayTxId?: string;
+  syncpayTxId?: string;
   downloadLink?: string;
   createdAt: string;
   price?: Price & { product?: Product };
@@ -68,15 +71,17 @@ export interface Order {
 export interface PixPaymentResponse {
   success: boolean;
   orderId: string;
-  pushinpayTransactionId: string;
+  gateway: 'pushinpay' | 'syncpay';
+  transactionId: string;
   pixCode: string; // Copy-paste PIX code
-  pixQrCodeBase64: string; // Base64 QR code image
+  pixQrCodeBase64?: string; // Base64 QR code image (only for PushinPay)
   amount: string; // Formatted currency (e.g., "R$ 10,00")
   amountInCents: number;
-  status: 'created' | 'paid' | 'expired';
-  expiresAt: string;
+  status?: 'created' | 'paid' | 'expired';
+  expiresAt?: string;
   productName: string;
   priceCategory: string;
+  message?: string; // Message from gateway (e.g., SyncPay)
 }
 
 export interface PopupConfig {
@@ -149,6 +154,7 @@ export const adminAPI = {
     name: string;
     description: string;
     imageUrl: string;
+    previewMediaUrl?: string;
     isActive?: boolean;
     telegramLink?: string;
     prices?: Array<{
@@ -168,6 +174,7 @@ export const adminAPI = {
       name?: string;
       description?: string;
       imageUrl?: string;
+      previewMediaUrl?: string;
       isActive?: boolean;
       telegramLink?: string;
     }
@@ -235,9 +242,18 @@ export const adminAPI = {
   },
 };
 
+export interface InitiatePaymentParams {
+  priceId: string;
+  gateway?: 'pushinpay' | 'syncpay';
+  clientName?: string;
+  clientCpf?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+}
+
 export const paymentAPI = {
-  initiatePayment: async (priceId: string): Promise<PixPaymentResponse> => {
-    const response = await api.post<PixPaymentResponse>('/api/payments/initiate-payment', { priceId });
+  initiatePayment: async (params: InitiatePaymentParams): Promise<PixPaymentResponse> => {
+    const response = await api.post<PixPaymentResponse>('/api/payments/initiate-payment', params);
     return response.data;
   },
 
@@ -254,8 +270,14 @@ export const paymentAPI = {
 
 export const settingsAPI = {
   getPublicSettings: async () => {
-    const response = await api.get<{ supportTelegram: string }>('/api/settings/public');
-    return response.data;
+    const response = await api.get<{
+      supportTelegram?: string;
+      paymentGateway?: 'pushinpay' | 'syncpay';
+      blackFridayPromo?: boolean;
+    }>('/api/settings/public');
+    // Normalize defaults so callers can rely on defined values
+    const { supportTelegram = '', paymentGateway = 'pushinpay', blackFridayPromo = false } = response.data || {};
+    return { supportTelegram, paymentGateway, blackFridayPromo };
   },
 
   updateSetting: async (key: string, value: string) => {

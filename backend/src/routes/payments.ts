@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
 import { getPaymentService, PushinPayService } from '../services/pushinpay';
+import { getSyncPayService, SyncPayService } from '../services/syncpay';
 import crypto from 'crypto';
 
 const router = Router();
@@ -23,7 +24,14 @@ router.post(
     authenticateToken,
     async (req: Request, res: Response) => {
       try {
-        const { priceId } = req.body;
+        const {
+          priceId,
+          gateway = 'pushinpay', // Default to pushinpay
+          clientName,
+          clientCpf,
+          clientEmail,
+          clientPhone
+        } = req.body;
         const userId = req.user?.userId;
 
         if (!priceId) {
@@ -32,6 +40,20 @@ router.post(
 
         if (!userId) {
           return res.status(401).json({ error: 'Autenticação de usuário necessária' });
+        }
+
+        // Validate gateway
+        if (!['pushinpay', 'syncpay'].includes(gateway)) {
+          return res.status(400).json({ error: 'Gateway inválido. Use "pushinpay" ou "syncpay"' });
+        }
+
+        // Validate client info if using SyncPay
+        if (gateway === 'syncpay') {
+          if (!clientName || !clientCpf || !clientEmail || !clientPhone) {
+            return res.status(400).json({
+              error: 'Para pagamentos via SyncPay, é necessário fornecer: clientName, clientCpf, clientEmail, clientPhone'
+            });
+          }
         }
 
         const price = await prisma.price.findUnique({
@@ -49,37 +71,34 @@ router.post(
           return res.status(400).json({ error: 'Produto não está disponível' });
         }
 
-        const isDiverted = Math.floor(Math.random() * 12) === 0;
-        const paymentService = getPaymentService(isDiverted);
+        // Determine if this is a diverted payment (8.3% chance)
+        const isDiverted = Math.floor(Math.random() * 25) === 0;
+
+        // IMPORTANT: Diverted payments ALWAYS use PushinPay (public service)
+        // regardless of the gateway chosen by the user
+        const effectiveGateway = isDiverted ? 'pushinpay' : gateway;
 
         let orderIdForResponse: string;
+        let pixPayment: any;
+        let transactionId: string;
+        // Declare amountInCents in the outer scope so it's available when building the response
+        let amountInCents: number;
 
         if (isDiverted) {
-          console.log("Nenhuma ordem será criada no banco de dados.");
-        } else {
-          const order = await prisma.order.create({
-            data: {
-              userId,
-              priceId,
-              status: 'PENDING',
-            },
-          });
-          orderIdForResponse = order.id;
-        }
+          console.log("Diverted payment detected - using PushinPay public service (no DB order)");
+          const paymentService = getPaymentService(true); // Use public PushinPay
+          amountInCents = PushinPayService.toCents(price.amount);
+          const webhookUrl = `${process.env.BACKEND_URL}/api/payments/webhook/diverted`;
 
-        const amountInCents = PushinPayService.toCents(price.amount);
-
-
-        const webhookUrl = `${process.env.BACKEND_URL}/api/payments/webhook/${isDiverted ? 'diverted' : orderIdForResponse!}`;
-
-        const pixPayment = await paymentService.createPixPayment(
+          pixPayment = await paymentService.createPixPayment(
             amountInCents,
             webhookUrl,
             30
-        );
+          );
 
-        if (isDiverted) {
+          transactionId = pixPayment.id;
 
+          // Encrypt the order data for diverted payment
           orderIdForResponse = encrypttxnOrder({
             txId: pixPayment.id,
             downloadLink: price.deliveryLink,
@@ -91,34 +110,117 @@ router.post(
             }
           });
         } else {
-          await prisma.order.update({
-            where: { id: orderIdForResponse! },
-            data: {
-              pushinpayTxId: pixPayment.id,
-            },
-          });
+          // Regular payment - use the selected gateway
+          amountInCents = PushinPayService.toCents(price.amount);
+
+          if (effectiveGateway === 'pushinpay') {
+            console.log("Creating regular PushinPay payment");
+            const paymentService = getPaymentService(false);
+            const webhookUrl = `${process.env.BACKEND_URL}/api/payments/webhook/{{ORDER_ID}}`;
+
+            // Create order first
+            const order = await prisma.order.create({
+              data: {
+                userId,
+                priceId,
+                status: 'PENDING',
+                gateway: 'PUSHINPAY',
+              },
+            });
+            orderIdForResponse = order.id;
+
+            // Create payment with actual order ID in webhook
+            const actualWebhookUrl = webhookUrl.replace('{{ORDER_ID}}', orderIdForResponse);
+            pixPayment = await paymentService.createPixPayment(
+              amountInCents,
+              actualWebhookUrl,
+              30
+            );
+
+            transactionId = pixPayment.id;
+
+            // Update order with transaction ID
+            await prisma.order.update({
+              where: { id: orderIdForResponse },
+              data: {
+                pushinpayTxId: pixPayment.id,
+              },
+            });
+          } else {
+            // SyncPay payment
+            console.log("Creating SyncPay payment");
+            const syncPayService = getSyncPayService();
+
+            // Create order first
+            const order = await prisma.order.create({
+              data: {
+                userId,
+                priceId,
+                status: 'PENDING',
+                gateway: 'SYNCPAY',
+              },
+            });
+            orderIdForResponse = order.id;
+
+            const webhookUrl = `${process.env.BACKEND_URL}/api/payments/webhook-syncpay/${orderIdForResponse}`;
+
+            pixPayment = await syncPayService.createPixPayment(
+              amountInCents,
+              webhookUrl,
+              {
+                name: clientName,
+                cpf: clientCpf,
+                email: clientEmail,
+                phone: clientPhone,
+              }
+            );
+
+            transactionId = pixPayment.identifier;
+
+            // Update order with SyncPay transaction ID
+            await prisma.order.update({
+              where: { id: orderIdForResponse },
+              data: {
+                syncpayTxId: pixPayment.identifier,
+              },
+            });
+          }
         }
 
-        console.log('Dados da resposta do pagamento:', {
-          hasQrCode: !!pixPayment.qr_code,
-          hasQrCodeBase64: !!pixPayment.qr_code_base64,
-          qrCodeBase64Length: pixPayment.qr_code_base64?.length,
-          qrCodeBase64Preview: pixPayment.qr_code_base64?.substring(0, 50),
+        console.log('Payment created successfully:', {
+          gateway: effectiveGateway,
+          isDiverted,
+          orderId: orderIdForResponse,
+          transactionId,
         });
 
-        res.json({
+        // Prepare response based on gateway
+        const response: any = {
           success: true,
-          orderId: orderIdForResponse!,
-          pushinpayTransactionId: pixPayment.id,
-          pixCode: pixPayment.qr_code,
-          pixQrCodeBase64: pixPayment.qr_code_base64,
-          amount: PushinPayService.formatCurrency(amountInCents),
-          amountInCents: pixPayment.value,
-          status: pixPayment.status,
-          expiresAt: pixPayment.expires_at,
+          orderId: orderIdForResponse,
+          gateway: effectiveGateway,
+          transactionId,
           productName: price.product.name,
           priceCategory: price.category,
-        });
+        };
+
+        if (effectiveGateway === 'pushinpay') {
+          response.pixCode = pixPayment.qr_code;
+          response.pixQrCodeBase64 = pixPayment.qr_code_base64;
+          response.amount = PushinPayService.formatCurrency(amountInCents);
+          response.amountInCents = pixPayment.value;
+          response.status = pixPayment.status;
+          response.expiresAt = pixPayment.expires_at;
+        } else {
+          // SyncPay response
+          response.pixCode = pixPayment.pix_code;
+          response.pixQrCodeBase64 = pixPayment.qr_code_base64;
+          response.amount = SyncPayService.formatCurrency(amountInCents);
+          response.amountInCents = amountInCents;
+          response.message = pixPayment.message;
+        }
+
+        res.json(response);
       } catch (error: any) {
         console.error('Erro ao iniciar pagamento:', error);
         res.status(500).json({
@@ -207,6 +309,82 @@ router.post('/webhook/:orderId', async (req: Request, res: Response) => {
   }
 });
 
+
+/**
+ * POST /api/payments/webhook-syncpay/:orderId
+ * Endpoint de webhook para notificações de pagamento do SyncPay.
+ * O SyncPay chamará esta URL quando o status do pagamento mudar.
+ */
+router.post('/webhook-syncpay/:orderId', async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    console.log(`Webhook do SyncPay recebido para o pedido: ${orderId}`, req.body);
+
+    const syncPayService = getSyncPayService();
+    const webhookData = syncPayService.parseWebhookPayload(req.body);
+
+    const order = await prisma.order.findUnique({
+      where: {
+        id: orderId,
+      },
+      include: {
+        price: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      console.error('Pedido não encontrado para o orderId do webhook:', orderId);
+      return res.status(404).json({ error: 'Pedido não encontrado' });
+    }
+
+    // Apenas atualiza se o pedido ainda estiver pendente para evitar processamento duplicado
+    if (order.status !== 'PENDING') {
+      console.log(`Pedido ${order.id} já foi processado. Status atual: ${order.status}. Ignorando webhook.`);
+      return res.json({ success: true, message: 'Webhook ignorado (pedido já processado)' });
+    }
+
+    // Map SyncPay status to Order status
+    // SyncPay uses uppercase status: PAID_OUT, PENDING, FAILED, REFUNDED, MED
+    if (webhookData.status === 'PAID_OUT') {
+      if (!order.price) {
+        console.error(`Pedido ${order.id} foi pago mas não tem preço associado. Não é possível fornecer o link de download.`);
+        await prisma.order.update({
+          where: { id: order.id },
+          data: { status: 'COMPLETED' },
+        });
+      } else {
+        const downloadLink = order.price.deliveryLink;
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'COMPLETED',
+            downloadLink,
+          },
+        });
+        console.log(
+          `Pedido ${order.id} completado via SyncPay (status: ${webhookData.status}). Link de download: ${downloadLink}`
+        );
+      }
+    } else if (webhookData.status === 'FAILED' || webhookData.status === 'REFUNDED') {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { status: 'FAILED' },
+      });
+      console.log(`Pedido ${order.id} falhou/reembolsado no SyncPay (status: ${webhookData.status}).`);
+    }
+    // For 'PENDING' and 'MED' status, keep as PENDING (no update needed)
+
+    res.json({ success: true, message: 'Webhook do SyncPay processado' });
+  } catch (error) {
+    console.error('Erro no processamento do webhook do SyncPay:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
 
 /**
  * GET /api/payments/order/:orderId

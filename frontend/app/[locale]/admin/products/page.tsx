@@ -43,6 +43,7 @@ export default function AdminProductsPage() {
     name: '',
     description: '',
     imageUrl: '',
+    previewMediaUrl: '',
     telegramLink: '',
     isActive: true,
   });
@@ -84,11 +85,13 @@ export default function AdminProductsPage() {
       if (editingProduct) {
         await adminAPI.updateProduct(editingProduct.id, {
           ...productForm,
+          previewMediaUrl: productForm.previewMediaUrl || undefined,
           telegramLink: productForm.telegramLink || undefined,
         });
       } else {
         await adminAPI.createProduct({
           ...productForm,
+          previewMediaUrl: productForm.previewMediaUrl || undefined,
           telegramLink: productForm.telegramLink || undefined,
         });
       }
@@ -108,6 +111,7 @@ export default function AdminProductsPage() {
       name: product.name,
       description: product.description,
       imageUrl: product.imageUrl,
+      previewMediaUrl: product.previewMediaUrl || '',
       telegramLink: product.telegramLink || '',
       isActive: product.isActive,
     });
@@ -130,6 +134,7 @@ export default function AdminProductsPage() {
       name: '',
       description: '',
       imageUrl: '',
+      previewMediaUrl: '',
       telegramLink: '',
       isActive: true,
     });
@@ -383,6 +388,22 @@ export default function AdminProductsPage() {
                 className="input-noir"
                 required
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Preview Media URL (Video/Image/GIF)
+              </label>
+              <input
+                type="url"
+                value={productForm.previewMediaUrl}
+                onChange={(e) => setProductForm({ ...productForm, previewMediaUrl: e.target.value })}
+                className="input-noir"
+                placeholder="https://example.com/preview.mp4"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Optional - Link to a video, image, or GIF to preview the product
+              </p>
             </div>
 
             <div>

@@ -229,7 +229,7 @@ export default function PaymentPage() {
           </button>
 
           <p className="text-xs text-gray-600 mt-4">
-            {t('paymentExpires')}: {new Date(paymentData.expiresAt).toLocaleString()}
+            {t('paymentExpires')}: {paymentData.expiresAt ? new Date(paymentData.expiresAt).toLocaleString() : 'N/A'}
           </p>
         </div>
 

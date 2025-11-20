@@ -6,21 +6,31 @@ import { Product } from '@/lib/api';
 
 interface ProductCardProps {
   product: Product;
+  showDiscount?: boolean;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, showDiscount = false }: ProductCardProps) {
   const t = useTranslations('store');
 
-  // Get minimum price
-  const minPrice = product.prices?.reduce((min, price) => {
-    return price.amount < min.amount ? price : min;
-  }, product.prices[0]);
+  // Sort prices by amount
+  const sortedPrices = [...(product.prices || [])].sort((a, b) => a.amount - b.amount);
+
+  // Get minimum price (cheapest)
+  const minPrice = sortedPrices[0];
+
+  // Get middle price (most bought)
+  const middlePrice = sortedPrices[Math.floor(sortedPrices.length / 2)];
+
+  // Get second most expensive (recommended)
+  const secondMostExpensive = sortedPrices.length >= 2
+    ? sortedPrices[sortedPrices.length - 2]
+    : sortedPrices[sortedPrices.length - 1];
 
   return (
     <Link href={`/store/${product.id}`} className="block">
       <div className="card-noir group cursor-pointer">
       {/* Image */}
-      <div className="relative h-64 mb-4 rounded-lg overflow-hidden bg-noir-medium">
+      <div className="relative h-48 md:h-64 mb-3 md:mb-4 rounded-lg overflow-hidden bg-noir-medium">
         <img
           src={product.imageUrl}
           alt={product.name}
@@ -32,48 +42,62 @@ export default function ProductCard({ product }: ProductCardProps) {
         />
         {!product.isActive && (
           <div className="absolute inset-0 bg-noir-darker/80 flex items-center justify-center">
-            <span className="text-red-400 font-bold">Inactive</span>
+            <span className="text-red-400 font-bold text-sm md:text-base">Inactive</span>
+          </div>
+        )}
+        {showDiscount && product.isActive && (
+          <div className="absolute top-2 md:top-3 right-2 md:right-3 z-10">
+            <div className="bg-gradient-to-r from-accent-rose to-accent-purple text-white font-bold px-2 md:px-3 py-1 md:py-2 rounded-lg shadow-lg transform rotate-3 animate-pulse">
+              <div className="text-xs uppercase tracking-wide">Black Friday</div>
+              <div className="text-base md:text-lg">-10%</div>
+            </div>
           </div>
         )}
       </div>
 
       {/* Content */}
       <div>
-        <h3 className="text-xl font-bold mb-2 text-accent-gold group-hover:text-accent-rose transition-colors">
+        <h3 className="text-lg md:text-xl font-bold mb-2 text-accent-gold group-hover:text-accent-rose transition-colors">
           {product.name}
         </h3>
-        <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+        <p className="text-gray-400 text-sm mb-3 md:mb-4 line-clamp-2">
           {product.description}
         </p>
 
-        {/* Price and CTA */}
-        <div className="flex items-center justify-between">
+        {/* Price Options */}
+        <div className="mb-4 space-y-2">
           {minPrice && (
-            <div className="text-gray-300">
-              <span className="text-xs text-gray-500">{t('priceFrom')}</span>
-              <div className="font-bold">
+            <div className="flex justify-between items-center text-xs md:text-sm">
+              <span className="text-gray-500">{t('priceFrom')}</span>
+              <span className="font-bold text-gray-300">
                 {minPrice.currency} {minPrice.amount.toFixed(2)}
-              </div>
+              </span>
             </div>
           )}
-          <span className="btn-secondary text-sm">
+          {middlePrice && (
+            <div className="flex justify-between items-center text-xs md:text-sm">
+              <span className="text-gray-500">{t('mostBought')}</span>
+              <span className="font-bold text-gray-300">
+                {middlePrice.currency} {middlePrice.amount.toFixed(2)}
+              </span>
+            </div>
+          )}
+          {secondMostExpensive && (
+            <div className="flex justify-between items-center text-xs md:text-sm">
+              <span className="text-gray-500">{t('recommended')}</span>
+              <span className="font-bold text-accent-gold">
+                {secondMostExpensive.currency} {secondMostExpensive.amount.toFixed(2)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* CTA */}
+        <div className="flex justify-center">
+          <span className="btn-secondary text-xs md:text-sm whitespace-nowrap w-full text-center">
             {t('viewDetails')}
           </span>
         </div>
-
-        {/* Categories */}
-        {product.prices && product.prices.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {product.prices.map((price) => (
-              <span
-                key={price.id}
-                className="px-2 py-1 bg-noir-medium text-xs rounded text-gray-400"
-              >
-                {price.category}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
       </div>
     </Link>

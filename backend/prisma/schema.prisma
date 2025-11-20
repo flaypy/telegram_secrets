@@ -26,6 +26,11 @@ enum OrderStatus {
   FAILED
 }
 
+enum PaymentGateway {
+  PUSHINPAY
+  SYNCPAY
+}
+
 model User {
   id        String    @id @default(uuid())
   email     String    @unique
@@ -44,14 +49,15 @@ model User {
 
 
 model Product {
-  id           String   @id @default(uuid())
-  name         String
-  description  String   @db.Text
-  imageUrl     String
-  isActive     Boolean  @default(true)
-  telegramLink String?  // External Telegram link for non-BR purchases
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(uuid())
+  name            String
+  description     String   @db.Text
+  imageUrl        String
+  previewMediaUrl String?  // Optional preview media (video/image/gif) URL
+  isActive        Boolean  @default(true)
+  telegramLink    String?  // External Telegram link for non-BR purchases
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   prices        Price[]
   regions       ProductRegion[]
@@ -74,18 +80,21 @@ model Price {
 }
 
 model Order {
-  id                   String      @id @default(uuid())
-  status               OrderStatus @default(PENDING)
+  id                   String         @id @default(uuid())
+  status               OrderStatus    @default(PENDING)
   userId               String
   priceId              String?
-  pushinpayTxId        String?     // PushinPay transaction ID
-  downloadLink         String?     // Generated upon completion
-  createdAt            DateTime    @default(now())
+  gateway              PaymentGateway @default(PUSHINPAY) // Payment gateway used
+  pushinpayTxId        String?        // PushinPay transaction ID
+  syncpayTxId          String?        // SyncPay transaction ID
+  downloadLink         String?        // Generated upon completion
+  createdAt            DateTime       @default(now())
 
-  user                 User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  price                Price?      @relation(fields: [priceId], references: [id], onDelete: SetNull)
+  user                 User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  price                Price?         @relation(fields: [priceId], references: [id], onDelete: SetNull)
 
   @@index([pushinpayTxId])
+  @@index([syncpayTxId])
   @@map("orders")
 }
 

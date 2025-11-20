@@ -16,8 +16,18 @@ router.get('/public', async (req: Request, res: Response) => {
       where: { key: 'support_telegram' },
     });
 
+    const paymentGatewayConfig = await prisma.setting.findUnique({
+      where: { key: 'payment_gateway' },
+    });
+
+    const blackFridayPromo = await prisma.setting.findUnique({
+      where: { key: 'black_friday_promo' },
+    });
+
     res.json({
       supportTelegram: supportContact?.value || '',
+      paymentGateway: paymentGatewayConfig?.value || 'pushinpay',
+      blackFridayPromo: blackFridayPromo?.value === 'true',
     });
   } catch (error) {
     console.error('Error fetching public settings:', error);

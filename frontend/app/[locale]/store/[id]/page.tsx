@@ -20,9 +20,13 @@ export default function ProductDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [paymentGateway, setPaymentGateway] = useState<'pushinpay' | 'syncpay'>('pushinpay');
+  const [blackFridayPromo, setBlackFridayPromo] = useState(false);
 
   useEffect(() => {
     fetchProduct();
+    fetchGatewayConfig();
+    fetchPromoStatus();
   }, [productId]);
 
   const fetchProduct = async () => {
@@ -38,10 +42,46 @@ export default function ProductDetailsPage() {
     }
   };
 
+  const fetchGatewayConfig = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/settings/public`);
+      const data = await response.json();
+      if (data.paymentGateway) {
+        setPaymentGateway(data.paymentGateway);
+      }
+    } catch (err) {
+      console.error('Failed to fetch gateway config:', err);
+      // Keep default gateway
+    }
+  };
+
+  const fetchPromoStatus = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/settings/public`);
+      const data = await response.json();
+      setBlackFridayPromo(data.blackFridayPromo || false);
+    } catch (err) {
+      console.error('Failed to fetch promo status:', err);
+    }
+  };
+
   const handlePurchase = async (priceId: string) => {
     setProcessingPayment(true);
     try {
-      const response = await paymentAPI.initiatePayment(priceId);
+      const params: any = {
+        priceId,
+        gateway: paymentGateway,
+      };
+
+      // Add fixed/generic client info if using SyncPay
+      if (paymentGateway === 'syncpay') {
+        params.clientName = 'Cliente Telegram Secrets';
+        params.clientCpf = '00000000000';
+        params.clientEmail = 'cliente@telegram-secrets.com';
+        params.clientPhone = '11999999999';
+      }
+
+      const response = await paymentAPI.initiatePayment(params);
 
       // Store payment data in sessionStorage for the payment page
       sessionStorage.setItem(
@@ -104,16 +144,59 @@ export default function ProductDetailsPage() {
           </Link>
 
           <div className="grid md:grid-cols-2 gap-12">
-            {/* Product Image */}
-            <div className="relative aspect-square rounded-lg overflow-hidden bg-noir-dark">
-              <img
-                src={product.imageUrl}
-                alt={product.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.src = 'https://via.placeholder.com/600x600?text=No+Image';
-                }}
-              />
+            {/* Product Image and Preview Media */}
+            <div className="space-y-4">
+              <div className="relative aspect-square rounded-lg overflow-hidden bg-noir-dark">
+                <img
+                  src={product.imageUrl}
+                  alt={product.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://via.placeholder.com/600x600?text=No+Image';
+                  }}
+                />
+                {blackFridayPromo && (
+                  <div className="absolute top-4 right-4 z-10">
+                    <div className="bg-gradient-to-r from-accent-rose to-accent-purple text-white font-bold px-4 py-3 rounded-xl shadow-lg transform rotate-3 animate-pulse">
+                      <div className="text-sm uppercase tracking-wide">Black Friday</div>
+                      <div className="text-2xl">-10% OFF</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Preview Media (Video/Image/GIF) */}
+              {product.previewMediaUrl && (
+                <div className="relative rounded-lg overflow-hidden bg-noir-dark">
+                  {/* Detect if it's a video or image based on file extension */}
+                  {/(\.mp4|\.webm|\.ogg)$/i.test(product.previewMediaUrl) ? (
+                    <video
+                      src={product.previewMediaUrl}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      controls
+                      className="w-full h-auto"
+                      onError={(e) => {
+                        console.error('Failed to load video preview');
+                      }}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  ) : (
+                    <img
+                      src={product.previewMediaUrl}
+                      alt={`${product.name} preview`}
+                      className="w-full h-auto object-contain"
+                      onError={(e) => {
+                        console.error('Failed to load preview media');
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Product Info */}
@@ -132,6 +215,17 @@ export default function ProductDetailsPage() {
               {isBrazilianUser ? (
                 // BRAZIL: Show price tiers and payment options
                 <div>
+                  {blackFridayPromo && (
+                    <div className="mb-6 p-4 bg-gradient-to-r from-accent-rose/20 to-accent-purple/20 rounded-lg border-2 border-accent-gold text-center">
+                      <p className="text-lg font-bold text-accent-gold">
+                        🎉 Promoção Black Friday Ativa! 🎉
+                      </p>
+                      <p className="text-sm text-gray-300">
+                        Todos os preços já estão com 10% de desconto aplicado
+                      </p>
+                    </div>
+                  )}
+
                   <h2 className="text-2xl font-bold text-accent-rose mb-6">
                     {t('selectQuality')}
                   </h2>
@@ -146,10 +240,17 @@ export default function ProductDetailsPage() {
                           key={price.id}
                           className="card-noir flex items-center justify-between hover:border-accent-rose transition-all"
                         >
-                          <div>
-                            <h3 className="text-xl font-bold text-accent-gold">
-                              {price.category}
-                            </h3>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <h3 className="text-xl font-bold text-accent-gold">
+                                {price.category}
+                              </h3>
+                              {blackFridayPromo && (
+                                <span className="bg-accent-rose text-white text-xs font-bold px-2 py-1 rounded uppercase">
+                                  -10%
+                                </span>
+                              )}
+                            </div>
                             <p className="text-3xl font-bold text-gray-100">
                               {price.currency} {price.amount.toFixed(2)}
                             </p>

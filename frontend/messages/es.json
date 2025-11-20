@@ -33,7 +33,9 @@
     "subtitle": "Explora nuestro catálogo exclusivo",
     "noProducts": "No hay productos disponibles en tu región",
     "detectedCountry": "Ubicación detectada",
-    "priceFrom": "Desde",
+    "priceFrom": "Desde:",
+    "mostBought": "Más comprado:",
+    "recommended": "Recomendado:",
     "viewDetails": "Ver Detalles"
   },
   "admin": {

@@ -38,7 +38,7 @@ router.get('/products', async (req: Request, res: Response) => {
  */
 router.post('/products', async (req: Request, res: Response) => {
   try {
-    const { name, description, imageUrl, isActive, telegramLink, prices } = req.body;
+    const { name, description, imageUrl, previewMediaUrl, isActive, telegramLink, prices } = req.body;
 
     // Validation
     if (!name || !description || !imageUrl) {
@@ -69,6 +69,7 @@ router.post('/products', async (req: Request, res: Response) => {
         name,
         description,
         imageUrl,
+        previewMediaUrl: previewMediaUrl || null,
         isActive: isActive !== undefined ? isActive : true,
         telegramLink: telegramLink || null,
         prices: prices
@@ -105,7 +106,7 @@ router.post('/products', async (req: Request, res: Response) => {
 router.put('/products/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, imageUrl, isActive, telegramLink } = req.body;
+    const { name, description, imageUrl, previewMediaUrl, isActive, telegramLink } = req.body;
 
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
@@ -123,6 +124,7 @@ router.put('/products/:id', async (req: Request, res: Response) => {
         name: name || existingProduct.name,
         description: description || existingProduct.description,
         imageUrl: imageUrl || existingProduct.imageUrl,
+        previewMediaUrl: previewMediaUrl !== undefined ? previewMediaUrl : existingProduct.previewMediaUrl,
         isActive: isActive !== undefined ? isActive : existingProduct.isActive,
         telegramLink: telegramLink !== undefined ? telegramLink : existingProduct.telegramLink,
       },
