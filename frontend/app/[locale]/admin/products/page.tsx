@@ -31,10 +31,15 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
 
-  // Bulk update state
+  // Bulk update state (Delivery Link)
   const [bulkDeliveryLink, setBulkDeliveryLink] = useState('');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0 });
+
+  // Bulk update state (Telegram Link)
+  const [bulkTelegramLink, setBulkTelegramLink] = useState('');
+  const [isBulkUpdatingTelegram, setIsBulkUpdatingTelegram] = useState(false);
+  const [bulkProgressTelegram, setBulkProgressTelegram] = useState({ current: 0, total: 0 });
 
   // Product form state
   const [showProductForm, setShowProductForm] = useState(false);
@@ -281,6 +286,49 @@ export default function AdminProductsPage() {
     }
   };
 
+  // Bulk update telegram links
+  const handleBulkUpdateTelegramLinks = async () => {
+    if (!confirm(`This will update the Telegram link for ALL products to:\n\n${bulkTelegramLink || '(empty - will clear existing links)'}\n\nAre you sure?`)) {
+      return;
+    }
+
+    setIsBulkUpdatingTelegram(true);
+    setBulkProgressTelegram({ current: 0, total: 0 });
+
+    try {
+      // Collect all product IDs
+      const allProductIds: string[] = products.map(product => product.id);
+
+      if (allProductIds.length === 0) {
+        alert('No products found to update');
+        return;
+      }
+
+      setBulkProgressTelegram({ current: 0, total: allProductIds.length });
+      console.log(`Starting bulk update of ${allProductIds.length} products...`);
+
+      // Update all products in a single request
+      const result = await adminAPI.bulkUpdateProducts(allProductIds, bulkTelegramLink);
+
+      setBulkProgressTelegram({ current: allProductIds.length, total: allProductIds.length });
+
+      // Show results
+      alert(`Bulk update completed!\n\n✓ Successfully updated ${result.updatedCount} products`);
+
+      // Refresh products to show updated links
+      await fetchProducts();
+
+      // Clear the input
+      setBulkTelegramLink('');
+    } catch (err: any) {
+      console.error('Bulk update error:', err);
+      const errorMsg = err.response?.data?.error || err.message || 'Unknown error';
+      alert(`An error occurred during bulk update:\n\n${errorMsg}`);
+    } finally {
+      setIsBulkUpdatingTelegram(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -291,6 +339,51 @@ export default function AdminProductsPage() {
 
   return (
     <div>
+      {/* Bulk Update Telegram Links Section */}
+      <div className="card-noir mb-6 border-2 border-accent-purple">
+        <h2 className="text-xl font-bold mb-4 text-accent-purple">
+          Atualização em Massa - Telegram Link (for non-BR customers)
+        </h2>
+        <p className="text-sm text-gray-400 mb-4">
+          Use esta ferramenta para atualizar o link do Telegram de TODOS os produtos de uma vez.
+        </p>
+        <div className="flex gap-3">
+          <input
+            type="url"
+            value={bulkTelegramLink}
+            onChange={(e) => setBulkTelegramLink(e.target.value)}
+            className="input-noir flex-1"
+            placeholder="https://t.me/your_channel"
+            disabled={isBulkUpdatingTelegram}
+          />
+          <button
+            onClick={handleBulkUpdateTelegramLinks}
+            disabled={isBulkUpdatingTelegram}
+            className="btn-primary whitespace-nowrap"
+          >
+            {isBulkUpdatingTelegram ? 'Atualizando...' : 'Atualizar Todos'}
+          </button>
+        </div>
+        {isBulkUpdatingTelegram && (
+          <div className="mt-3">
+            <div className="flex items-center gap-2 text-accent-purple mb-2">
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-accent-purple"></div>
+              <span className="text-sm">
+                Atualizando: {bulkProgressTelegram.current} de {bulkProgressTelegram.total} produtos
+              </span>
+            </div>
+            {bulkProgressTelegram.total > 0 && (
+              <div className="w-full bg-noir-medium rounded-full h-2">
+                <div
+                  className="bg-accent-purple h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(bulkProgressTelegram.current / bulkProgressTelegram.total) * 100}%` }}
+                ></div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Bulk Update Delivery Links Section */}
       <div className="card-noir mb-6 border-2 border-accent-gold">
         <h2 className="text-xl font-bold mb-4 text-accent-gold">

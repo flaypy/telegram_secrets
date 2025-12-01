@@ -236,6 +236,14 @@ export const adminAPI = {
     return response.data;
   },
 
+  bulkUpdateProducts: async (productIds: string[], telegramLink: string) => {
+    const response = await api.put('/api/admin/products/bulk-update', {
+      productIds,
+      telegramLink,
+    });
+    return response.data;
+  },
+
   deletePrice: async (priceId: string) => {
     const response = await api.delete(`/api/admin/prices/${priceId}`);
     return response.data;

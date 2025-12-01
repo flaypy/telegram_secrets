@@ -100,6 +100,54 @@ router.post('/products', async (req: Request, res: Response) => {
 });
 
 /**
+ * PUT /api/admin/products/bulk-update
+ * Update multiple products' telegramLink at once (for bulk operations)
+ * IMPORTANT: This route must be BEFORE /products/:id to avoid matching "bulk-update" as an ID
+ */
+router.put('/products/bulk-update', async (req: Request, res: Response) => {
+  try {
+    const { productIds, telegramLink } = req.body;
+
+    // Validation
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      return res.status(400).json({
+        error: 'productIds must be a non-empty array',
+      });
+    }
+
+    if (telegramLink === undefined) {
+      return res.status(400).json({
+        error: 'telegramLink is required (can be empty string to clear)',
+      });
+    }
+
+    console.log(`Bulk updating ${productIds.length} products with telegramLink: ${telegramLink}`);
+
+    // Update all products in a single transaction
+    const updateResult = await prisma.product.updateMany({
+      where: {
+        id: {
+          in: productIds,
+        },
+      },
+      data: {
+        telegramLink: telegramLink || null,
+      },
+    });
+
+    console.log(`Successfully updated ${updateResult.count} products`);
+
+    res.json({
+      message: 'Products updated successfully',
+      updatedCount: updateResult.count,
+    });
+  } catch (error) {
+    console.error('Error bulk updating products:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
  * PUT /api/admin/products/:id
  * Update a product including telegramLink
  */
