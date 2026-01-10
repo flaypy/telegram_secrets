@@ -40,16 +40,17 @@ export async function generateMetadata({
     creator: 'Telegram Secrets',
     publisher: 'Telegram Secrets',
 
-    // Robots and indexing
+    // Robots and indexing - Block all search engines
     robots: {
-      index: true,
-      follow: true,
+      index: false,
+      follow: false,
+      nocache: true,
       googleBot: {
-        index: true,
-        follow: true,
-        'max-video-preview': -1,
-        'max-image-preview': 'large',
-        'max-snippet': -1,
+        index: false,
+        follow: false,
+        noarchive: true,
+        nosnippet: true,
+        noimageindex: true,
       },
     },
 

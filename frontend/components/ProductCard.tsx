@@ -30,7 +30,7 @@ export default function ProductCard({ product, showDiscount = false }: ProductCa
     <Link href={`/store/${product.id}`} className="block">
       <div className="card-noir group cursor-pointer">
       {/* Image */}
-      <div className="relative h-48 md:h-64 mb-3 md:mb-4 rounded-lg overflow-hidden bg-noir-medium">
+      <div className="relative h-56 md:h-64 mb-4 rounded-lg overflow-hidden bg-noir-medium">
         <img
           src={product.imageUrl}
           alt={product.name}
@@ -42,14 +42,14 @@ export default function ProductCard({ product, showDiscount = false }: ProductCa
         />
         {!product.isActive && (
           <div className="absolute inset-0 bg-noir-darker/80 flex items-center justify-center">
-            <span className="text-red-400 font-bold text-sm md:text-base">Inactive</span>
+            <span className="text-red-400 font-bold text-base">Inactive</span>
           </div>
         )}
         {showDiscount && product.isActive && (
-          <div className="absolute top-2 md:top-3 right-2 md:right-3 z-10">
-            <div className="bg-gradient-to-r from-accent-rose to-accent-purple text-white font-bold px-2 md:px-3 py-1 md:py-2 rounded-lg shadow-lg transform rotate-3 animate-pulse">
+          <div className="absolute top-3 right-3 z-10">
+            <div className="bg-gradient-to-r from-accent-rose to-accent-purple text-white font-bold px-3 py-2 rounded-lg shadow-lg transform rotate-3 animate-pulse">
               <div className="text-xs uppercase tracking-wide">Black Friday</div>
-              <div className="text-base md:text-lg">-10%</div>
+              <div className="text-lg">-10%</div>
             </div>
           </div>
         )}
@@ -57,44 +57,59 @@ export default function ProductCard({ product, showDiscount = false }: ProductCa
 
       {/* Content */}
       <div>
-        <h3 className="text-lg md:text-xl font-bold mb-2 text-accent-gold group-hover:text-accent-rose transition-colors">
+        <h3 className="text-xl md:text-2xl font-bold mb-2 text-accent-gold group-hover:text-accent-rose transition-colors leading-tight">
           {product.name}
         </h3>
-        <p className="text-gray-400 text-sm mb-3 md:mb-4 line-clamp-2">
+        <p className="text-gray-400 text-base md:text-sm mb-4 line-clamp-2">
           {product.description}
         </p>
 
-        {/* Price Options */}
+        {/* Price Options - Simplified for Mobile */}
         <div className="mb-4 space-y-2">
-          {minPrice && (
-            <div className="flex justify-between items-center text-xs md:text-sm">
-              <span className="text-gray-500">{t('priceFrom')}</span>
-              <span className="font-bold text-gray-300">
-                {minPrice.currency} {minPrice.amount.toFixed(2)}
-              </span>
-            </div>
-          )}
-          {middlePrice && (
-            <div className="flex justify-between items-center text-xs md:text-sm">
-              <span className="text-gray-500">{t('mostBought')}</span>
-              <span className="font-bold text-gray-300">
-                {middlePrice.currency} {middlePrice.amount.toFixed(2)}
-              </span>
-            </div>
-          )}
-          {secondMostExpensive && (
-            <div className="flex justify-between items-center text-xs md:text-sm">
-              <span className="text-gray-500">{t('recommended')}</span>
-              <span className="font-bold text-accent-gold">
-                {secondMostExpensive.currency} {secondMostExpensive.amount.toFixed(2)}
-              </span>
-            </div>
-          )}
+          {/* Mobile: Show only "From" price */}
+          <div className="md:hidden">
+            {minPrice && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500 text-sm">{t('priceFrom')}</span>
+                <span className="font-bold text-accent-gold text-xl">
+                  {minPrice.currency} {minPrice.amount.toFixed(2)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: Show all tiers */}
+          <div className="hidden md:block space-y-2">
+            {minPrice && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">{t('priceFrom')}</span>
+                <span className="font-bold text-gray-300">
+                  {minPrice.currency} {minPrice.amount.toFixed(2)}
+                </span>
+              </div>
+            )}
+            {middlePrice && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">{t('mostBought')}</span>
+                <span className="font-bold text-gray-300">
+                  {middlePrice.currency} {middlePrice.amount.toFixed(2)}
+                </span>
+              </div>
+            )}
+            {secondMostExpensive && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">{t('recommended')}</span>
+                <span className="font-bold text-accent-gold">
+                  {secondMostExpensive.currency} {secondMostExpensive.amount.toFixed(2)}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* CTA */}
+        {/* CTA - Mobile optimized with better tap target */}
         <div className="flex justify-center">
-          <span className="btn-secondary text-xs md:text-sm whitespace-nowrap w-full text-center">
+          <span className="btn-secondary text-base font-semibold w-full text-center py-4 md:py-3">
             {t('viewDetails')}
           </span>
         </div>

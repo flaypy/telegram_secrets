@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { productAPI, Product } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 import BlackFridayPopup from '@/components/BlackFridayPopup';
+import UrgencyPopup from '@/components/UrgencyPopup';
 
 export default function StorePage() {
   const t = useTranslations('store');
@@ -63,20 +64,23 @@ export default function StorePage() {
       {/* Black Friday Popup */}
       {blackFridayPromo && <BlackFridayPopup />}
 
+      {/* Urgency Popup */}
+      <UrgencyPopup />
+
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">
           {blackFridayPromo && (
             <div className="inline-block mb-4 animate-bounce">
-              <span className="bg-gradient-to-r from-accent-gold via-accent-rose to-accent-purple text-white font-bold text-sm md:text-lg px-4 md:px-6 py-2 rounded-full uppercase tracking-wider shadow-lg">
+              <span className="bg-gradient-to-r from-accent-gold via-accent-rose to-accent-purple text-white font-bold text-xs md:text-lg px-4 md:px-6 py-2 md:py-2.5 rounded-full uppercase tracking-wider shadow-lg">
                 🔥 Black Friday - 10% OFF em Tudo! 🔥
               </span>
             </div>
           )}
-          <h1 className="text-3xl md:text-5xl font-serif font-bold mb-3 md:mb-4 text-accent-gold">
+          <h1 className="text-3xl md:text-5xl font-serif font-bold mb-3 md:mb-4 text-accent-gold leading-tight px-2">
             {t('title')}
           </h1>
-          <p className="text-base md:text-xl text-gray-400 mb-4">{t('subtitle')}</p>
+          <p className="text-base md:text-xl text-gray-400 mb-4 px-4">{t('subtitle')}</p>
         </div>
 
         {/* Products Grid */}

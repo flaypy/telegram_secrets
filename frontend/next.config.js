@@ -3,7 +3,7 @@ const withNextIntl = require('next-intl/plugin')();
 
 const nextConfig = {
   images: {
-    domains: ['localhost', 'cdn.telegramSecrets.com'],
+    domains: ['localhost', 'cdn.telegramsecretcontent.com'],
     remotePatterns: [
       {
         protocol: 'https',

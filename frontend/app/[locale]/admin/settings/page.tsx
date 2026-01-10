@@ -7,6 +7,7 @@ export default function AdminSettingsPage() {
   const [supportTelegram, setSupportTelegram] = useState('');
   const [paymentGateway, setPaymentGateway] = useState<'pushinpay' | 'syncpay'>('pushinpay');
   const [blackFridayPromo, setBlackFridayPromo] = useState(false);
+  const [forcedPurchase, setForcedPurchase] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -30,6 +31,7 @@ export default function AdminSettingsPage() {
       setSupportTelegram(data.supportTelegram || '');
       setPaymentGateway(data.paymentGateway || 'pushinpay');
       setBlackFridayPromo(data.blackFridayPromo || false);
+      setForcedPurchase(data.forcedPurchase || false);
     } catch (error) {
       console.error('Failed to load settings:', error);
       setMessage({ type: 'error', text: 'Failed to load settings' });
@@ -61,6 +63,7 @@ export default function AdminSettingsPage() {
       await settingsAPI.updateSetting('support_telegram', supportTelegram);
       await settingsAPI.updateSetting('payment_gateway', paymentGateway);
       await settingsAPI.updateSetting('black_friday_promo', blackFridayPromo.toString());
+      await settingsAPI.updateSetting('forced_purchase', forcedPurchase.toString());
       setMessage({ type: 'success', text: 'Settings saved successfully!' });
     } catch (error: any) {
       console.error('Failed to save settings:', error);
@@ -227,6 +230,61 @@ export default function AdminSettingsPage() {
             className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-accent-rose to-accent-purple hover:from-accent-purple hover:to-accent-rose"
           >
             {saving ? 'Saving...' : 'Save Promotion Settings'}
+          </button>
+        </form>
+
+        {/* Forced Purchase Section */}
+        <form onSubmit={handleSave} className="card-noir mt-8">
+          <h2 className="text-2xl font-bold text-accent-gold mb-6 flex items-center gap-2">
+            <span>🎁</span>
+            Compra Forçada (Teste/Produtos Gratuitos)
+          </h2>
+
+          <div className="mb-6 p-6 bg-gradient-to-r from-accent-gold/10 to-accent-purple/10 rounded-lg border border-accent-gold/30">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 mt-1">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={forcedPurchase}
+                    onChange={(e) => setForcedPurchase(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-14 h-7 bg-noir-dark peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent-gold/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-accent-gold peer-checked:to-accent-purple"></div>
+                </label>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-accent-gold mb-2">
+                  {forcedPurchase ? '✅ Compra Forçada Ativa' : 'Ativar Compra Forçada'}
+                </h3>
+                <p className="text-sm text-gray-400 mb-3">
+                  {forcedPurchase
+                    ? 'A compra forçada está ativa. Os clientes verão:'
+                    : 'Ative a compra forçada para permitir que os clientes resgatem produtos gratuitamente:'}
+                </p>
+                <ul className="text-sm text-gray-300 space-y-2 list-disc list-inside">
+                  <li>Botão com texto "Resgatar meu pedido" em vez de "Verificar"</li>
+                  <li>Ao clicar 3 vezes no botão, o produto é liberado automaticamente</li>
+                  <li>Funciona mesmo sem pagamento efetivo</li>
+                  <li>Útil para testes, promoções gratuitas ou distribuição de conteúdo</li>
+                </ul>
+                <div className="mt-4 p-3 bg-noir-dark rounded border border-red-500/50">
+                  <p className="text-xs text-red-300">
+                    <strong className="text-red-400">⚠️ ATENÇÃO:</strong> Esta opção permite que qualquer pessoa receba produtos sem pagar.
+                    Use apenas para testes ou quando quiser distribuir produtos gratuitamente.
+                    Desative em ambiente de produção se estiver vendendo produtos.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-accent-gold to-accent-purple hover:from-accent-purple hover:to-accent-gold"
+          >
+            {saving ? 'Saving...' : 'Save Forced Purchase Settings'}
           </button>
         </form>
 

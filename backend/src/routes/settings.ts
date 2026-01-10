@@ -24,10 +24,15 @@ router.get('/public', async (req: Request, res: Response) => {
       where: { key: 'black_friday_promo' },
     });
 
+    const forcedPurchase = await prisma.setting.findUnique({
+      where: { key: 'forced_purchase' },
+    });
+
     res.json({
       supportTelegram: supportContact?.value || '',
       paymentGateway: paymentGatewayConfig?.value || 'pushinpay',
       blackFridayPromo: blackFridayPromo?.value === 'true',
+      forcedPurchase: forcedPurchase?.value === 'true',
     });
   } catch (error) {
     console.error('Error fetching public settings:', error);

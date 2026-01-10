@@ -274,6 +274,11 @@ export const paymentAPI = {
     const response = await api.get(`/api/payments/check-status/${transactionId}`);
     return response.data;
   },
+
+  forceCompleteOrder: async (orderId: string) => {
+    const response = await api.post<{ success: boolean; order: Order }>(`/api/payments/force-complete/${orderId}`);
+    return response.data;
+  },
 };
 
 export const settingsAPI = {
@@ -282,10 +287,11 @@ export const settingsAPI = {
       supportTelegram?: string;
       paymentGateway?: 'pushinpay' | 'syncpay';
       blackFridayPromo?: boolean;
+      forcedPurchase?: boolean;
     }>('/api/settings/public');
     // Normalize defaults so callers can rely on defined values
-    const { supportTelegram = '', paymentGateway = 'pushinpay', blackFridayPromo = false } = response.data || {};
-    return { supportTelegram, paymentGateway, blackFridayPromo };
+    const { supportTelegram = '', paymentGateway = 'pushinpay', blackFridayPromo = false, forcedPurchase = false } = response.data || {};
+    return { supportTelegram, paymentGateway, blackFridayPromo, forcedPurchase };
   },
 
   updateSetting: async (key: string, value: string) => {

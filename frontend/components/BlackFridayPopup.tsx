@@ -1,17 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 
 export default function BlackFridayPopup() {
   const [isVisible, setIsVisible] = useState(false);
+  const [touchStart, setTouchStart] = useState(0);
+  const [touchEnd, setTouchEnd] = useState(0);
+  const popupRef = useRef<HTMLDivElement>(null);
   const t = useTranslations('common');
 
   useEffect(() => {
     // Check if user has already seen the popup
     const hasSeenPopup = sessionStorage.getItem('blackFridayPopupSeen');
     if (!hasSeenPopup) {
-      setIsVisible(true);
+      // Delay popup by 2 seconds for better UX
+      const timer = setTimeout(() => {
+        setIsVisible(true);
+      }, 2000);
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -20,19 +27,50 @@ export default function BlackFridayPopup() {
     sessionStorage.setItem('blackFridayPopupSeen', 'true');
   };
 
+  // Handle swipe down to dismiss on mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientY);
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStart - touchEnd < -100) {
+      // Swipe down detected
+      handleClose();
+    }
+  };
+
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="relative max-w-2xl w-full bg-gradient-to-br from-noir-dark via-noir-medium to-noir-dark border-2 border-accent-gold rounded-2xl p-5 md:p-8 shadow-2xl animate-scaleIn max-h-[90vh] overflow-y-auto">
-        {/* Close button */}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn"
+      onClick={handleClose}
+    >
+      <div
+        ref={popupRef}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onClick={(e) => e.stopPropagation()}
+        className="relative max-w-lg md:max-w-2xl w-full bg-gradient-to-br from-noir-dark via-noir-medium to-noir-dark border-2 border-accent-gold rounded-2xl p-6 md:p-8 shadow-2xl animate-scaleIn max-h-[85vh] md:max-h-[90vh] overflow-y-auto"
+      >
+        {/* Swipe indicator for mobile */}
+        <div className="md:hidden flex justify-center mb-2">
+          <div className="w-12 h-1 bg-gray-600 rounded-full"></div>
+        </div>
+
+        {/* Close button - larger tap target on mobile */}
         <button
           onClick={handleClose}
-          className="absolute top-3 right-3 md:top-4 md:right-4 text-gray-400 hover:text-white transition-colors z-10"
+          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10 p-2 -m-2"
           aria-label="Close"
         >
           <svg
-            className="w-5 h-5 md:w-6 md:h-6"
+            className="w-6 h-6"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -50,32 +88,37 @@ export default function BlackFridayPopup() {
         <div className="text-center">
           {/* Black Friday Badge */}
           <div className="inline-block mb-3 md:mb-4">
-            <span className="bg-gradient-to-r from-accent-gold via-accent-rose to-accent-purple text-white font-bold text-xs md:text-sm px-3 md:px-4 py-1 rounded-full uppercase tracking-wider animate-pulse">
+            <span className="bg-gradient-to-r from-accent-gold via-accent-rose to-accent-purple text-white font-bold text-xs md:text-sm px-4 py-1.5 rounded-full uppercase tracking-wider animate-pulse">
               Black Friday
             </span>
           </div>
 
-          {/* Main heading */}
-          <h2 className="text-3xl md:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-accent-gold via-accent-rose to-accent-purple mb-3 md:mb-4">
+          {/* Main heading - better mobile sizing */}
+          <h2 className="text-2xl md:text-5xl font-serif font-bold text-transparent bg-clip-text bg-gradient-to-r from-accent-gold via-accent-rose to-accent-purple mb-3 md:mb-4 leading-tight">
             🔥 Promoção Especial! 🔥
           </h2>
 
           {/* Description */}
-          <p className="text-lg md:text-2xl text-gray-200 mb-4 md:mb-6 font-semibold">
+          <p className="text-base md:text-2xl text-gray-200 mb-3 md:mb-6 font-semibold">
             10% de desconto em <span className="text-accent-gold">TODOS</span> os produtos!
           </p>
 
-          <p className="text-sm md:text-lg text-gray-400 mb-6 md:mb-8 px-2">
+          <p className="text-sm md:text-lg text-gray-400 mb-6 md:mb-8 px-1">
             Aproveite esta oferta exclusiva por tempo limitado e garanta acesso aos melhores conteúdos com preços incríveis!
           </p>
 
-          {/* CTA Button */}
+          {/* CTA Button - full width on mobile with better tap target */}
           <button
             onClick={handleClose}
-            className="btn-primary text-sm md:text-lg px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-accent-gold to-accent-rose hover:from-accent-rose hover:to-accent-purple transition-all duration-300 transform hover:scale-105 w-full md:w-auto"
+            className="btn-primary text-base md:text-lg px-6 md:px-8 py-4 bg-gradient-to-r from-accent-gold to-accent-rose hover:from-accent-rose hover:to-accent-purple transition-all duration-300 transform hover:scale-105 w-full shadow-lg"
           >
             Ver Produtos em Promoção
           </button>
+
+          {/* Mobile hint */}
+          <p className="md:hidden text-xs text-gray-600 mt-4">
+            Deslize para baixo para fechar
+          </p>
         </div>
 
         {/* Decorative elements */}
