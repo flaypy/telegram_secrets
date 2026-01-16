@@ -40,7 +40,8 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  orders    Order[]
+  orders          Order[]
+  bitcoinPayments BitcoinPayment[]
 
   @@map("users")
 }
@@ -73,8 +74,9 @@ model Price {
   deliveryLink String   // The specific download link for this price tier
   productId    String
 
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  orders    Order[]
+  product         Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orders          Order[]
+  bitcoinPayments BitcoinPayment[]
 
   @@map("prices")
 }
@@ -128,4 +130,55 @@ model PopupConfig {
   updatedAt  DateTime @updatedAt
 
   @@map("popup_configs")
+}
+
+model MetaPixelConfig {
+  id                      String   @id @default(uuid())
+  name                    String   // Nome do pixel para identificação
+  pixelId                 String   // Meta Pixel ID
+  accessToken             String   @db.Text // Access Token da Meta Conversions API
+  pixelType               String   @default("standard") // Tipo do pixel (standard, advanced, etc.)
+  enablePageView          Boolean  @default(true)  // Habilitar evento PageView
+  enablePurchase          Boolean  @default(true)  // Habilitar evento Purchase
+  enableInitiateCheckout  Boolean  @default(true)  // Habilitar evento InitiateCheckout
+  isActive                Boolean  @default(true)  // Se o pixel está ativo
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@map("meta_pixel_configs")
+}
+
+enum BitcoinPaymentStatus {
+  PENDING
+  AWAITING_CONFIRMATION
+  COMPLETED
+  EXPIRED
+  FAILED
+}
+
+model BitcoinPayment {
+  id                String               @id @default(uuid())
+  userId            String
+  priceId           String
+  amountUsd         Float                // Valor em dólares
+  amountBtc         Float                // Valor em Bitcoin
+  btcRate           Float                // Taxa de conversão USD->BTC no momento
+  feePercentage     Float                @default(3.0) // Taxa adicional (%)
+  walletAddress     String               // Endereço da carteira para receber
+  derivationIndex   Int?                 // Índice de derivação do HD wallet (se usado)
+  status            BitcoinPaymentStatus @default(PENDING)
+  txHash            String?              // Hash da transação Bitcoin (após confirmação)
+  downloadLink      String?              // Link de download (após confirmação)
+  expiresAt         DateTime             // Expira após 24 horas
+  confirmedAt       DateTime?            // Quando foi confirmado
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  price             Price                @relation(fields: [priceId], references: [id], onDelete: Cascade)
+
+  @@index([walletAddress])
+  @@index([status])
+  @@index([derivationIndex])
+  @@map("bitcoin_payments")
 }

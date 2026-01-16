@@ -49,28 +49,40 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </h1>
 
           {/* Navigation */}
-          <nav className="flex gap-4 border-b border-noir-light pb-4">
+          <nav className="flex gap-4 border-b border-noir-light pb-4 overflow-x-auto">
             <Link
               href="/admin/analytics"
-              className="px-4 py-2 text-gray-300 hover:text-accent-gold transition-colors"
+              className="px-4 py-2 text-gray-300 hover:text-accent-gold transition-colors whitespace-nowrap"
             >
               {t('analytics')}
             </Link>
             <Link
               href="/admin/products"
-              className="px-4 py-2 text-gray-300 hover:text-accent-gold transition-colors"
+              className="px-4 py-2 text-gray-300 hover:text-accent-gold transition-colors whitespace-nowrap"
             >
               {t('products')}
             </Link>
             <Link
               href="/admin/orders"
-              className="px-4 py-2 text-gray-300 hover:text-accent-gold transition-colors"
+              className="px-4 py-2 text-gray-300 hover:text-accent-gold transition-colors whitespace-nowrap"
             >
               {t('orders')}
             </Link>
             <Link
+              href="/admin/bitcoin-payments"
+              className="px-4 py-2 text-gray-300 hover:text-accent-gold transition-colors whitespace-nowrap"
+            >
+              💰 Bitcoin
+            </Link>
+            <Link
+              href="/admin/meta-pixel"
+              className="px-4 py-2 text-gray-300 hover:text-accent-gold transition-colors whitespace-nowrap"
+            >
+              Meta Pixel
+            </Link>
+            <Link
               href="/admin/settings"
-              className="px-4 py-2 text-gray-300 hover:text-accent-gold transition-colors"
+              className="px-4 py-2 text-gray-300 hover:text-accent-gold transition-colors whitespace-nowrap"
             >
               {t('settings')}
             </Link>

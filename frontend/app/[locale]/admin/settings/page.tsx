@@ -5,6 +5,8 @@ import { settingsAPI, popupAPI } from '@/lib/api';
 
 export default function AdminSettingsPage() {
   const [supportTelegram, setSupportTelegram] = useState('');
+  const [telegramSupportLink, setTelegramSupportLink] = useState('');
+  const [btcWalletAddress, setBtcWalletAddress] = useState('');
   const [paymentGateway, setPaymentGateway] = useState<'pushinpay' | 'syncpay'>('pushinpay');
   const [blackFridayPromo, setBlackFridayPromo] = useState(false);
   const [forcedPurchase, setForcedPurchase] = useState(false);
@@ -29,6 +31,8 @@ export default function AdminSettingsPage() {
     try {
       const data = await settingsAPI.getPublicSettings();
       setSupportTelegram(data.supportTelegram || '');
+      setTelegramSupportLink(data.telegramSupportLink || '');
+      setBtcWalletAddress(data.btcWalletAddress || '');
       setPaymentGateway(data.paymentGateway || 'pushinpay');
       setBlackFridayPromo(data.blackFridayPromo || false);
       setForcedPurchase(data.forcedPurchase || false);
@@ -61,6 +65,8 @@ export default function AdminSettingsPage() {
 
     try {
       await settingsAPI.updateSetting('support_telegram', supportTelegram);
+      await settingsAPI.updateSetting('telegram_support_link', telegramSupportLink);
+      await settingsAPI.updateSetting('btc_wallet_address', btcWalletAddress);
       await settingsAPI.updateSetting('payment_gateway', paymentGateway);
       await settingsAPI.updateSetting('black_friday_promo', blackFridayPromo.toString());
       await settingsAPI.updateSetting('forced_purchase', forcedPurchase.toString());
@@ -176,6 +182,71 @@ export default function AdminSettingsPage() {
             className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? 'Saving...' : 'Save Settings'}
+          </button>
+        </form>
+
+        {/* Bitcoin Settings Section */}
+        <form onSubmit={handleSave} className="card-noir mt-8">
+          <h2 className="text-2xl font-bold text-accent-gold mb-6 flex items-center gap-2">
+            <span>💰</span>
+            Bitcoin Payment Settings
+          </h2>
+
+          <div className="mb-6">
+            <label className="block text-gray-300 mb-2">
+              Telegram Support Link (for Bitcoin payments)
+            </label>
+            <input
+              type="url"
+              value={telegramSupportLink}
+              onChange={(e) => setTelegramSupportLink(e.target.value)}
+              placeholder="https://t.me/yoursupport"
+              className="input-noir w-full"
+            />
+            <p className="text-sm text-gray-500 mt-2">
+              Link where customers should send payment proof for Bitcoin transactions.
+              <br />
+              Example: https://t.me/yourusername
+            </p>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-gray-300 mb-2">
+              Bitcoin Wallet Address
+            </label>
+            <input
+              type="text"
+              value={btcWalletAddress}
+              onChange={(e) => setBtcWalletAddress(e.target.value)}
+              placeholder="bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
+              className="input-noir w-full font-mono text-sm"
+            />
+            <p className="text-sm text-gray-500 mt-2">
+              Your Bitcoin wallet address for receiving international payments.
+              <br />
+              <span className="text-yellow-500">⚠️ Important: Make sure this is a valid Bitcoin address.</span>
+              <br />
+              For better privacy, consider using an HD wallet XPUB to generate unique addresses (requires additional setup).
+            </p>
+          </div>
+
+          <div className="p-4 bg-noir-dark rounded-lg border border-accent-gold/30 mb-6">
+            <h3 className="text-sm font-bold text-accent-gold mb-2">How Bitcoin Payments Work</h3>
+            <ul className="text-xs text-gray-400 space-y-1 list-disc list-inside">
+              <li>International customers can pay with Bitcoin</li>
+              <li>System calculates USD → BTC conversion + 3% fee</li>
+              <li>Customer sends payment to your wallet address</li>
+              <li>Customer sends proof via Telegram link above</li>
+              <li>You manually confirm payments in the Bitcoin Payments admin page</li>
+            </ul>
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-accent-gold to-yellow-600 hover:from-yellow-600 hover:to-accent-gold"
+          >
+            {saving ? 'Saving...' : 'Save Bitcoin Settings'}
           </button>
         </form>
 

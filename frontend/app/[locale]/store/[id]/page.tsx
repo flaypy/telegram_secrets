@@ -282,35 +282,100 @@ export default function ProductDetailsPage() {
                   </div>
                 </div>
               ) : (
-                // NON-BRAZIL: Show Telegram purchase button only
+                // NON-BRAZIL: Show Bitcoin and/or Telegram payment options
                 <div>
                   <h2 className="text-xl md:text-2xl font-bold text-accent-purple mb-4 md:mb-6">
-                    {t('purchaseViaTelegram')}
+                    {t('internationalPayment')}
                   </h2>
 
-                  <div className="card-noir bg-gradient-to-br from-accent-purple/10 to-noir-dark border-accent-purple">
-                    <p className="text-gray-300 mb-6 text-base">
-                      {t('telegramPurchaseDesc')}
-                    </p>
+                  {/* Show message if no payment options available */}
+                  {!product.prices?.filter(p => p.currency === 'USD').length && !product.telegramLink && (
+                    <div className="card-noir bg-gradient-to-br from-red-500/10 to-noir-dark border-red-500/50 text-center">
+                      <p className="text-gray-300 mb-2">
+                        {t('noPricesAvailable')}
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        Please contact support for purchase options.
+                      </p>
+                    </div>
+                  )}
 
-                    {product.telegramLink ? (
+                  {/* Bitcoin Payment Option - Only show if USD prices exist */}
+                  {product.prices && product.prices.filter(p => p.currency === 'USD').length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-lg font-bold text-accent-gold mb-3">
+                        💰 {t('payWithBitcoin')}
+                      </h3>
+                      <div className="space-y-3">
+                        {product.prices
+                          .filter(p => p.currency === 'USD')
+                          .sort((a, b) => a.amount - b.amount)
+                          .map((price) => (
+                            <div
+                              key={price.id}
+                              className="card-noir flex flex-col md:flex-row items-stretch md:items-center justify-between hover:border-accent-gold transition-all gap-3 md:gap-4 bg-gradient-to-br from-accent-gold/5 to-noir-dark border-accent-gold/50"
+                            >
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 md:gap-3 mb-1">
+                                  <h4 className="text-lg md:text-xl font-bold text-accent-gold">
+                                    {price.category}
+                                  </h4>
+                                  <span className="bg-accent-gold/20 text-accent-gold text-xs font-bold px-2 py-1 rounded uppercase border border-accent-gold/30">
+                                    Bitcoin
+                                  </span>
+                                </div>
+                                <p className="text-2xl md:text-3xl font-bold text-gray-100">
+                                  ${price.amount.toFixed(2)} USD
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  + 3% fee (converted to BTC)
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  // Store selected price and redirect to Bitcoin payment
+                                  sessionStorage.setItem('bitcoin_price_id', price.id);
+                                  router.push(`/${locale}/payment/bitcoin/${price.id}`);
+                                }}
+                                disabled={processingPayment}
+                                className="btn-primary bg-gradient-to-r from-accent-gold to-yellow-600 hover:from-yellow-600 hover:to-accent-gold disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto py-4 md:py-3 text-base md:text-base whitespace-nowrap"
+                              >
+                                {t('payWithBitcoin')}
+                              </button>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Telegram Option - Only show if telegramLink exists */}
+                  {product.telegramLink && (
+                    <div className="card-noir bg-gradient-to-br from-accent-purple/10 to-noir-dark border-accent-purple">
+                      <h3 className="text-lg font-bold text-accent-purple mb-3">
+                        📱 {t('purchaseViaTelegram')}
+                      </h3>
+                      <p className="text-gray-300 mb-4 text-sm">
+                        {t('telegramPurchaseDesc')}
+                      </p>
+
                       <a
                         href={product.telegramLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn-primary w-full text-center text-base md:text-lg inline-block py-4"
+                        className="btn-primary w-full text-center text-base inline-block py-3"
                       >
                         {t('completePurchaseOnTelegram')}
                       </a>
-                    ) : (
-                      <p className="text-red-400 text-base">{t('telegramLinkNotAvailable')}</p>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
-                  <div className="mt-6 p-4 md:p-6 bg-noir-medium rounded-lg border border-noir-light">
-                    <h3 className="font-bold text-accent-gold mb-2 text-base">{t('whyTelegram')}</h3>
-                    <p className="text-sm text-gray-400">{t('whyTelegramDesc')}</p>
-                  </div>
+                  {/* Info Box - Only show if at least one payment option exists */}
+                  {(product.prices?.filter(p => p.currency === 'USD').length > 0 || product.telegramLink) && (
+                    <div className="mt-6 p-4 md:p-6 bg-noir-medium rounded-lg border border-noir-light">
+                      <h3 className="font-bold text-accent-gold mb-2 text-sm">{t('secureBitcoinPayment')}</h3>
+                      <p className="text-xs text-gray-400">{t('secureBitcoinPaymentDesc')}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

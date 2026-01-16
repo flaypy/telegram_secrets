@@ -103,12 +103,17 @@
     "noPricesAvailable": "No prices available for this product",
     "securePayment": "Secure Payment",
     "securePaymentDesc": "Your payment is processed securely through our payment gateway.",
+    "internationalPayment": "International Payment Options",
+    "payWithBitcoin": "Pay with Bitcoin",
+    "bitcoinNotAvailable": "Bitcoin payment not available for this product",
     "purchaseViaTelegram": "Purchase via Telegram",
     "telegramPurchaseDesc": "For customers in your region, purchases are completed through our Telegram channel for enhanced privacy and convenience.",
     "completePurchaseOnTelegram": "Complete Purchase on Telegram",
     "telegramLinkNotAvailable": "Telegram purchase link not available",
     "whyTelegram": "Why Telegram?",
-    "whyTelegramDesc": "We use Telegram for secure, private transactions with instant delivery and 24/7 support."
+    "whyTelegramDesc": "We use Telegram for secure, private transactions with instant delivery and 24/7 support.",
+    "secureBitcoinPayment": "Secure & Anonymous Bitcoin Payment",
+    "secureBitcoinPaymentDesc": "Your Bitcoin payment is processed anonymously through the blockchain. Maximum privacy guaranteed."
   },
   "payment": {
     "pixPayment": "PIX Payment",

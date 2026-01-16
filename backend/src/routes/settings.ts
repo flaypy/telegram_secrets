@@ -16,6 +16,14 @@ router.get('/public', async (req: Request, res: Response) => {
       where: { key: 'support_telegram' },
     });
 
+    const telegramSupportLink = await prisma.setting.findUnique({
+      where: { key: 'telegram_support_link' },
+    });
+
+    const btcWalletAddress = await prisma.setting.findUnique({
+      where: { key: 'btc_wallet_address' },
+    });
+
     const paymentGatewayConfig = await prisma.setting.findUnique({
       where: { key: 'payment_gateway' },
     });
@@ -30,6 +38,8 @@ router.get('/public', async (req: Request, res: Response) => {
 
     res.json({
       supportTelegram: supportContact?.value || '',
+      telegramSupportLink: telegramSupportLink?.value || '',
+      btcWalletAddress: btcWalletAddress?.value || '',
       paymentGateway: paymentGatewayConfig?.value || 'pushinpay',
       blackFridayPromo: blackFridayPromo?.value === 'true',
       forcedPurchase: forcedPurchase?.value === 'true',

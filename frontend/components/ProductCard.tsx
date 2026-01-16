@@ -7,13 +7,21 @@ import { Product } from '@/lib/api';
 interface ProductCardProps {
   product: Product;
   showDiscount?: boolean;
+  detectedCountry?: string | null;
 }
 
-export default function ProductCard({ product, showDiscount = false }: ProductCardProps) {
+export default function ProductCard({ product, showDiscount = false, detectedCountry }: ProductCardProps) {
   const t = useTranslations('store');
 
-  // Sort prices by amount
-  const sortedPrices = [...(product.prices || [])].sort((a, b) => a.amount - b.amount);
+  // Determine which currency to show based on detected country
+  const isBrazil = detectedCountry === 'BR';
+  const targetCurrency = isBrazil ? 'BRL' : 'USD';
+
+  // Filter prices by currency and sort by amount
+  const filteredPrices = (product.prices || [])
+    .filter(price => price.currency === targetCurrency);
+
+  const sortedPrices = [...filteredPrices].sort((a, b) => a.amount - b.amount);
 
   // Get minimum price (cheapest)
   const minPrice = sortedPrices[0];

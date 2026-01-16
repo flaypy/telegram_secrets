@@ -285,13 +285,22 @@ export const settingsAPI = {
   getPublicSettings: async () => {
     const response = await api.get<{
       supportTelegram?: string;
+      telegramSupportLink?: string;
+      btcWalletAddress?: string;
       paymentGateway?: 'pushinpay' | 'syncpay';
       blackFridayPromo?: boolean;
       forcedPurchase?: boolean;
     }>('/api/settings/public');
     // Normalize defaults so callers can rely on defined values
-    const { supportTelegram = '', paymentGateway = 'pushinpay', blackFridayPromo = false, forcedPurchase = false } = response.data || {};
-    return { supportTelegram, paymentGateway, blackFridayPromo, forcedPurchase };
+    const {
+      supportTelegram = '',
+      telegramSupportLink = '',
+      btcWalletAddress = '',
+      paymentGateway = 'pushinpay',
+      blackFridayPromo = false,
+      forcedPurchase = false
+    } = response.data || {};
+    return { supportTelegram, telegramSupportLink, btcWalletAddress, paymentGateway, blackFridayPromo, forcedPurchase };
   },
 
   updateSetting: async (key: string, value: string) => {

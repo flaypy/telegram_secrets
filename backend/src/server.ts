@@ -15,6 +15,8 @@ import adminRoutes from './routes/admin';
 import paymentRoutes from './routes/payments';
 import settingsRoutes from './routes/settings';
 import popupRoutes from './routes/popup';
+import metapixelRoutes from './routes/metapixel';
+import bitcoinRoutes from './routes/bitcoin';
 
 // Load environment variables
 dotenv.config();
@@ -125,6 +127,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/popup', popupRoutes);
+app.use('/api/metapixel', metapixelRoutes);
+app.use('/api/bitcoin', bitcoinRoutes);
 
 // 404 handler
 app.use((req, res) => {

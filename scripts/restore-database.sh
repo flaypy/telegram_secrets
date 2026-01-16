@@ -49,7 +49,7 @@ echo "=========================================="
 
 # Stop application containers
 echo "Stopping application containers..."
-docker-compose -f docker-compose.prod.yml stop backend frontend
+docker compose -f docker-compose.prod.yml stop backend frontend
 
 # Restore database
 echo "Restoring database from backup..."
@@ -64,7 +64,7 @@ fi
 
 # Start application containers
 echo "Starting application containers..."
-docker-compose -f docker-compose.prod.yml start backend frontend
+docker compose -f docker-compose.prod.yml start backend frontend
 
 echo "=========================================="
 echo "Restore completed successfully"

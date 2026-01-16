@@ -13,12 +13,14 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [blackFridayPromo, setBlackFridayPromo] = useState(false);
+  const [detectedCountry, setDetectedCountry] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const data = await productAPI.getAll();
         setProducts(data.products);
+        setDetectedCountry(data.detectedCountry);
       } catch (err) {
         setError('Failed to load products');
         console.error(err);
@@ -91,7 +93,12 @@ export default function StorePage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} showDiscount={blackFridayPromo} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                showDiscount={blackFridayPromo}
+                detectedCountry={detectedCountry}
+              />
             ))}
           </div>
         )}
