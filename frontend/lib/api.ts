@@ -21,6 +21,29 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Interceptor para capturar novo token quando o usuário não existe mais no banco
+api.interceptors.response.use(
+  (response) => {
+    // Verifica se há um novo token no header
+    const newToken = response.headers['x-new-token'];
+    if (newToken && typeof window !== 'undefined') {
+      console.log('🔄 Token atualizado automaticamente - nova sessão criada');
+      localStorage.setItem('auth_token', newToken);
+    }
+    return response;
+  },
+  (error) => {
+    // Se o token for inválido/expirado e não há novo token, limpa o localStorage
+    if (error.response?.status === 403 && typeof window !== 'undefined') {
+      console.log('⚠️ Token inválido ou expirado - limpando sessão');
+      localStorage.removeItem('auth_token');
+      // Recarrega a página para criar nova sessão guest
+      window.location.reload();
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Types
 export interface Product {
   id: string;

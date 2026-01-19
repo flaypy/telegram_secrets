@@ -65,12 +65,9 @@ export default function ProductCard({ product, showDiscount = false, detectedCou
 
       {/* Content */}
       <div>
-        <h3 className="text-xl md:text-2xl font-bold mb-2 text-accent-gold group-hover:text-accent-rose transition-colors leading-tight">
+        <h3 className="text-xl md:text-2xl font-bold mb-4 text-accent-gold group-hover:text-accent-rose transition-colors leading-tight">
           {product.name}
         </h3>
-        <p className="text-gray-400 text-base md:text-sm mb-4 line-clamp-2">
-          {product.description}
-        </p>
 
         {/* Price Options - Simplified for Mobile */}
         <div className="mb-4 space-y-2">
@@ -118,7 +115,7 @@ export default function ProductCard({ product, showDiscount = false, detectedCou
         {/* CTA - Mobile optimized with better tap target */}
         <div className="flex justify-center">
           <span className="btn-secondary text-base font-semibold w-full text-center py-4 md:py-3">
-            {t('viewDetails')}
+            {t('buyNow')}
           </span>
         </div>
       </div>
